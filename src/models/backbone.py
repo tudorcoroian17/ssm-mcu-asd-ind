@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from reference_scan import selective_scan_ref
+from helpers.reference_scan import selective_scan_ref
 from src.models.ssm_block import SSMBlock
 
 

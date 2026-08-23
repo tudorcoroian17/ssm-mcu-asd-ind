@@ -159,7 +159,10 @@ pool design gets reimplemented, since IND should never pass through a silence fi
 | train skill | 0.5040 | 0.5482 |
 | val skill | 0.1346 | 0.5452 |
 | **train − val gap** | **0.369** | **0.003** |
-| mse_persistence / mse_climatology | 0.304 | 0.071 |
+| mse_persistence / mse_climatology (mean ± std, all 4 folds) | 0.304 (CNT, held-out-1 only) | 0.072 ± 0.003 |
+
+Re-measured across all four folds in `ssm-mcu-asd-ind` (`runs/baselines/toycar_all_folds_k2_baselines.json`) — the 0.07 
+figure isn't specific to held-out-1, every case shows the same ratio within ±0.004.
 
 The train/val gap collapsing to near-zero is the headline result — train and val are now drawn
 from the same kind of clip (same onset/offset bracket, same duration), so there's no systematic

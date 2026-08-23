@@ -1,0 +1,46 @@
+{
+    "case1": {
+        "n_clips": 3240,
+        "T": 344,
+        "n_mels": 64,
+        "horizon_k": 2,
+        "mse_persistence": 0.0700078159570694,
+        "mse_climatology": 0.9831184148788452,
+        "mu_frame_norm": 5.154871018930862e-07,
+        "ratio": 0.07120995283736682,
+        "held_out_case": 1
+    },
+    "case2": {
+        "n_clips": 3240,
+        "T": 344,
+        "n_mels": 64,
+        "horizon_k": 2,
+        "mse_persistence": 0.06570619344711304,
+        "mse_climatology": 0.985939085483551,
+        "mu_frame_norm": 4.95065251016058e-07,
+        "ratio": 0.06664325860951908,
+        "held_out_case": 2
+    },
+    "case3": {
+        "n_clips": 3240,
+        "T": 344,
+        "n_mels": 64,
+        "horizon_k": 2,
+        "mse_persistence": 0.07253571599721909,
+        "mse_climatology": 0.9805296063423157,
+        "mu_frame_norm": 4.369336750187358e-07,
+        "ratio": 0.07397605898693886,
+        "held_out_case": 3
+    },
+    "case4": {
+        "n_clips": 3240,
+        "T": 344,
+        "n_mels": 64,
+        "horizon_k": 2,
+        "mse_persistence": 0.07430180162191391,
+        "mse_climatology": 0.9831095337867737,
+        "mu_frame_norm": 5.209707296671695e-07,
+        "ratio": 0.07557835527819141,
+        "held_out_case": 4
+    }
+}
