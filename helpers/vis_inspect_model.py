@@ -147,7 +147,7 @@ def print_memory_summary(total_params, cfg):
     print(f"    or 16 k-means references {16 * d_model:>6} floats{16 * d_model * 4 / 1024:>10.1f} KB  (clustered kNN)")
 
 
-def export_onnx(model, head, cfg, T_small=8):
+def export_onnx(model, head, cfg, T_small=8, no_head=False):
     class BackboneWithHead(nn.Module):
         def __init__(self, backbone, head):
             super().__init__()
@@ -157,11 +157,19 @@ def export_onnx(model, head, cfg, T_small=8):
         def forward(self, x):
             return self.head(self.backbone(x, mode='sequence'))
 
+    class BackboneWithoutHead(nn.Module):
+        def __init__(self, backbone):
+            super().__init__()
+            self.backbone = backbone
+
+        def forward(self, x):
+            return self.backbone(x, mode='sequence')
+
     out_dir = PROJECT_ROOT / 'runs' / 'graph'
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f'model_T{T_small}.onnx'
+    path = out_dir / f'model_T{T}_no_head.onnx' if no_head else out_dir / f'model_T{T}.onnx'
 
-    wrapped = BackboneWithHead(model, head).eval()
+    wrapped = BackboneWithoutHead(model).eval() if no_head else BackboneWithHead(model, head).eval()
     dummy = torch.randn(1, T_small, cfg['model']['n_mels'])
 
     with _onnx_op_shims():
@@ -181,6 +189,7 @@ if __name__ == "__main__":
     parser.add_argument('--ckpt', type=str, default=None)
     parser.add_argument('--onnx', action='store_true')
     parser.add_argument('--T', type=int, default=None, help='sequence length for the shape trace')
+    parser.add_argument('--no-head', action='store_true')
     args = parser.parse_args()
 
     cfg = load_config()
@@ -220,4 +229,5 @@ if __name__ == "__main__":
           f"({2 * d_model if model.pooling == 'concat_mean_last' else d_model},) per clip")
 
     if args.onnx:
-        export_onnx(model, head, cfg, T_small=T)
+        no_head = args.no_head if args.no_head else False
+        export_onnx(model, head, cfg, T_small=T, no_head=no_head)
