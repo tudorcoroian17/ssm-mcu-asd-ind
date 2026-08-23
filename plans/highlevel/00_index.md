@@ -1,7 +1,17 @@
 # Implementation Plan — Index
 
 **Project:** SSM-based audio anomaly detection, deployed on MCUs.
-**Authoritative context:** `ssm_mcu_asd_master.md` — the *what and why* (committed claims, design rationale). These files are the *how and in what order*. The master doc wins on any conflict of intent; these files win on implementation detail.
+**Authoritative context:** `00_master_file.md` — the *what and why* (committed claims, design rationale). These files are the *how and in what order*. The master doc wins on any conflict of intent; these files win on implementation detail.
+
+---
+
+> **Status note (this project, `ssm-mcu-asd-ind`):** this file and the rest of
+> `plans/highlevel/` are inherited from `ssm-mcu-asd` largely as-is. Phase 1's architecture
+> work (backbone, SSM block, training objective) is complete and carried over — see
+> `01_design_decisions.md` §7 for the one thing that isn't carried over: **the data source.
+> CNT is dropped; training/val/test are IND-only now.** Read §7 before trusting anything below
+> that references CNT, silence filtering, or `fold_norm_stats.json` — those describe the prior
+> project's path, kept here as record, not this project's current pipeline.
 
 ---
 
@@ -33,7 +43,7 @@
 
 Master doc Section 18 is explicit that later phases cannot be planned until earlier ones produce results. Concretely, for each new session bring:
 
-1. `ssm_mcu_asd_master.md` — noting Sections 6–8 are skippable background.
+1. `00_master_file.md` — noting Sections 6–8 are skippable background.
 2. `00_index.md` + `01_design_decisions.md` — always.
 3. **The one phase file** for the phase being worked.
 4. **The previous phase's handoff manifest, materialised** — actual files, configs, numbers. Not the plan's description of them.
@@ -52,13 +62,19 @@ Phases 1–3 are specified concretely. Phases 4–6 are **conditional skeletons*
 
 ## Amendments these files make to the master doc
 
-Propagate these back into `ssm_mcu_asd_master.md` so the two do not drift.
+Propagate these back into `00_master_file.md` so the two do not drift.
 
 1. **Section 10, Option 3** — "no extra training beyond the backbone itself" refers to the *head only*. The backbone is trained by autoregressive next-frame prediction. See `01_design_decisions.md`.
 2. **Section 13** — bidirectionality moves from *deprioritized* to **forbidden**. It breaks the training objective's causality requirement, not merely MCU deployability.
 3. **Section 13** — new ablation axis: **prediction horizon `k`**.
 4. **Section 17 item 12** — downgraded from risk to ablation. The prediction head yields `S_recon` essentially free, so distance-only vs fused becomes a measurable comparison rather than an apology.
 5. **Section 12** — the GPU autoencoder baseline moves to the end of the project (Phase 6).
+6. **Data source** — CNT (`NormalSound_CNT`) is dropped entirely; every fold trains, validates,
+   and tests on IND clips only. Not an amendment to any specific master doc section so much as
+   a full replacement of the "which recordings" question underlying Phase 1 and Phase 2 — see
+   `01_design_decisions.md` §7 for the contamination finding, the decisive IND-only experiment,
+   and the tradeoffs accepted. `manifest.csv`, `configs/default.yaml`, and the fold function all
+   need rebuilding for this project; none survive the port from `ssm-mcu-asd`.
 
 ---
 
@@ -76,11 +92,19 @@ Continuing master doc Section 17's numbering.
 | 14 | GPU autoencoder baseline | **RESOLVED: deferred to Phase 6.** Consequence recorded in `phase_1_gpu_prototype.md` §1.8 |
 | 15 | Board availability | **open — needs your answer.** Affects Phase 3 ordering |
 | 16 | Per-run wall-clock time | open; resolves at Phase 1 exit gate. Decides whether Phase 2's nested design is affordable |
-| 17 | Pooling choice | open; resolve empirically in Phase 1 or promote to an ablation axis |
+| 17 | Pooling choice | provisionally mean pooling (Euclidean, AUC=0.9257 on IND-only held-out-1) — needs a Mahalanobis re-run on IND before treating as settled; see 01_design_decisions.md §7.3 |
 | 18 | State utilisation | open; if all three diagnostics say the state is inert, the master doc's Section 1 headline claim needs rethinking *before* the sweep runs |
 
 ---
 
 ## Immediate next action
 
-**Phase 1, steps 1.1 and 1.2b.** Neither needs the GPU or a single line of model code: inventory the dataset, then compute `mse_persistence` and `mse_mean` on cached features. That produces the number your first training run has to beat, before there is anything to be optimistic about.
+**Rebuild the data path for IND-only.** Nothing here needs the GPU. In order: (1) build
+`manifest.csv` for this project scoped to IND clips only (cross-check `ssm-mcu-asd`'s
+manifest-building script for the filename-parsing logic, still valid), (2) port
+`get_fold_ind_only()` and `compute_normalization_stats_ind()` from the prior project's
+exploration — drafted, not yet transcribed anywhere — as *the* fold/stats functions here, no
+"ind_only" naming needed since there's no CNT variant to distinguish from, (3) recompute
+`mse_persistence`/`mse_climatology` fresh on this project's IND pool before trusting any
+inherited number — the 0.071 ratio in §7.3 came from a single held-out-1 run in the old project
+and should be treated as a prior, not a given.
