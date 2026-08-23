@@ -144,6 +144,9 @@ def train_one_fold(held_out_case, cfg):
                 print(f"early stopping at epoch {epoch}")
                 break
 
+    # TODO at phase 2: per tensor activation min/max/percentiles
+    ranges = {}
+
     return {
         'held_out_case': held_out_case,
         'best_val_mse': best_val_mse,
