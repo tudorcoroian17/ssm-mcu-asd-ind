@@ -179,5 +179,6 @@ if __name__ == "__main__":
     CASE_IDS = [1, 2, 3, 4]
     cfg = load_config()
     for case_id in CASE_IDS:
+        print(f'Start training with held out case {case_id}...')
         result = train_one_fold(held_out_case=case_id, cfg=cfg)
         sanity_gate(result)
