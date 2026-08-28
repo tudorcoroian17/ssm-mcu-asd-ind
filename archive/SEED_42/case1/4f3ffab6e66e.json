@@ -1,4 +1,5 @@
 {
+    "held_out_case": 1,
     "training": {
         "horizon_k": 2,
         "target": "residual",
@@ -33,7 +34,6 @@
         "discretization": "zoh",
         "pooling": "mean"
     },
-    "held_out_case": 1,
     "val_mse": 0.031749607708591684,
     "train_mse": 0.03197038186458396,
     "all_train_mse": [
