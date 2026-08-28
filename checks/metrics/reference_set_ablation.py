@@ -8,7 +8,6 @@ received a gradient from. Validation normals come from the same three
 non-held-out cases as train, so this is a reference-set design choice,
 not a validity change -- neither option touches the held-out case.
 """
-from pathlib import Path
 
 import numpy as np
 import torch
@@ -19,7 +18,7 @@ from src.data.folds import get_fold
 from src.features.stats import compute_normalization_stats
 from src.features.baselines import load_fold_clips
 from src.models.backbone import SSMBackbone
-from checks.metrics.eval_auc_pauc import (
+from src.eval.auc_pauc import (
     get_embeddings, score_euclidean, score_mahalanobis,
     score_knn_full, score_knn_clustered,
 )

@@ -26,7 +26,7 @@ from src.data.folds import get_fold
 from src.features.stats import compute_normalization_stats
 from src.features.baselines import load_fold_clips
 from src.models.backbone import SSMBackbone
-from checks.metrics.eval_auc_pauc import (
+from src.eval.auc_pauc import (
     get_embeddings, score_euclidean, score_mahalanobis,
     score_knn_full, score_knn_clustered,
 )

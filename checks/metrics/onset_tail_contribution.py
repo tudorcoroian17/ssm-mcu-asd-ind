@@ -12,7 +12,7 @@ from src.data.folds import get_fold
 from src.features.stats import compute_normalization_stats
 from src.features.baselines import load_fold_clips
 from src.models.backbone import SSMBackbone
-from checks.metrics.eval_auc_pauc import get_embeddings, score_euclidean
+from src.eval.auc_pauc import get_embeddings, score_euclidean
 
 ONSET_FRAMES = 40  # ~1.28s, generous padding over the ~0.816s +/- 0.072s bracket
 TAIL_FRAMES = 25   # ~0.8s, generous padding over the ~0.45s bracket

@@ -15,6 +15,7 @@ from src.features.stats import compute_normalization_stats
 from src.features.baselines import load_fold_clips, compute_baselines
 from src.models.backbone import SSMBackbone
 from src.models.heads import PredictionHead
+from runs.compute_hash import train_config_hash
 
 class ClipDataset(Dataset):
     def __init__(self, X: np.ndarray):
@@ -25,10 +26,6 @@ class ClipDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx]
-
-def config_hash(feature_cfg):
-    canonical = json.dumps(feature_cfg, sort_keys=True)
-    return hashlib.sha256(canonical.encode()).hexdigest()[:12]
 
 def set_seed(seed):
     random.seed(seed)
@@ -47,13 +44,13 @@ def compute_loss(model, head, x, k):
     return F.mse_loss(pred_valid, target)
 
 def train_one_fold(held_out_case, cfg):
+    dir_name = train_config_hash(cfg, held_out_case)
     local_configs = {
         'held_out_case': held_out_case,
         'training': cfg['training'],
         'features': cfg['features'],
         'model': cfg['model'],
     }
-    filename_stem = config_hash(local_configs)
     set_seed(cfg['seed'])
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -124,11 +121,11 @@ def train_one_fold(held_out_case, cfg):
             best_val_mse = val_mse
             epochs_without_improvement = 0
             best_state = {'model': model.state_dict(), 'head': head.state_dict()}
-            ckpt_path = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / f'{filename_stem}.pt'
+            ckpt_path = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / dir_name /f'ckpt.pt'
             ckpt_path.parent.mkdir(parents=True, exist_ok=True)
             torch.save(best_state, ckpt_path)
 
-            ckpt_descriptor_path = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / f'{filename_stem}.json'
+            ckpt_descriptor_path = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / dir_name / f'ckpt_descriptor.json'
             ckpt_descriptor_path.parent.mkdir(parents=True, exist_ok=True)
             local_configs['held_out_case'] = held_out_case
             local_configs['val_mse'] = val_mse
