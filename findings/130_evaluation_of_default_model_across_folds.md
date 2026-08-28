@@ -1,7 +1,8 @@
 # Finding: default model evaluated across all four LOSO folds, three seeds
 
 **Status:** Resolved. The original concern — that fold difficulty increased with case number —
-was an artifact of single-seed measurement. Three open items remain, all minor and logged in §12.
+was an artifact of single-seed measurement. Reference-set choice was checked and does not change
+the recommendation (§13). Three open items remain, logged in §12, plus two new ones from §13.
 
 **Context:** First full evaluation of the `ssm-mcu-asd-ind` pipeline. The default configuration
 (`configs/default.yaml`) was trained on all four leave-one-subject-out folds at seeds 42, 158,
@@ -483,3 +484,101 @@ an accuracy upper bound.
 - Whether the melted-gears + plastic-ribbon + under-voltage profile is systematically the hardest
   fault type, or whether `ab22`/`ab49` recurrence is coincidence (§9.2).
 - The seed 824 fusion run was not completed (§10).
+- Whether `train_emb`'s geometry is systematically tightened by training, or whether case2's
+  +42% spread increase under `val_normal` is fold-specific (§13.1). Untested at other seeds.
+- Why `knn_full` on case1 degrades when `train+val` strictly extends `train` as the reference
+  set (§13.3) — expected monotonic behavior did not hold.
+- Whether `concat_mean_last`'s already-poor conditioning (§2.4) worsens further under a smaller
+  reference set (§13.4). Not yet tested.
+
+---
+
+## 13. Reference set: train-only versus validation-normal versus combined
+
+`train_emb` is generated from clips the model was directly optimized against. Validation
+normals come from the same three non-held-out cases but received no gradient, raising the
+question of whether `train_emb`'s geometry is artificially tightened by fitting rather than
+representative of normal operation generally. Checked at seed 158, `mean` pooling, all four
+folds, three reference sets: `train` (3240 clips), `val_normal` (810 clips), `train+val` (4050
+clips).
+
+### 13.1 The tightening effect is real but fold-dependent
+
+`cov_trace`, a pooling-independent measure of reference-set spread, comparing `val_normal`
+against `train`:
+
+| case | train | val_normal | change |
+|---|---|---|---|
+| 1 | 0.5939 | 0.6243 | +5.1% |
+| **2** | 1.5604 | **2.2188** | **+42.2%** |
+| 3 | 0.3794 | 0.3773 | −0.5% |
+| 4 | 0.9689 | 0.9722 | +0.3% |
+
+Case2 shows a large, unambiguous widening: validation normals occupy a looser region than the
+embeddings the model was fit against. Cases 3 and 4 show no meaningful difference. The
+hypothesis is confirmed as a real effect, not confirmed as a general property of training — it
+appears specific to case2's fold.
+
+### 13.2 The scoring effect tracks the geometry effect, in both directions
+
+Case2, where geometry shifted most, is also where scoring shifted most, but not uniformly across
+heads:
+
+| head | train | val_normal | train+val |
+|---|---|---|---|
+| euclidean | 0.9016 | 0.8790 | 0.8975 |
+| mahalanobis | 0.9962 | 0.9961 | 0.9962 |
+| knn_full | 0.9589 | 0.9584 | 0.9593 |
+| knn_clustered_16 | 0.9520 | **0.9580** | **0.9589** |
+
+A centroid-based head (`euclidean`) is hurt by a looser reference population, since the centroid
+becomes a less precise summary. A local kNN head (`knn_clustered_16`) benefits from seeing the
+true extent of normal variation. Cases 3 and 4, where geometry barely moved, show correspondingly
+flat scores across every head. The relationship between reference-set geometry and downstream
+AUC is mechanistically coherent, but it does not resolve to "train" or "val" being better in
+general — it depends on both the fold and the head.
+
+### 13.3 Two results outside the expected pattern
+
+**Case1, `knn_full`: combining reference sets performs worse than either alone.** Train alone
+scores 0.9420, val_normal alone scores 0.9371, but `train+val` scores 0.8827 — an 8-point drop
+from adding more reference data. `knn_full` uses the k-th nearest neighbor distance, and since
+`train+val` is a strict superset of `train`, every test point's score can only decrease or stay
+equal when val is added. If the added points happen to sit close to specific borderline
+anomalies without similarly tightening genuinely normal test points, those anomalies' scores
+shrink toward the normal cluster and the ranking degrades, even though each individual score
+moved in the direction superset inclusion guarantees. Not a bug; a property of nearest-neighbor
+scoring under reference-set growth. Logged as open in §12.
+
+**Case3, `knn_full`: AUC and pAUC move in opposite directions.** `val_normal` gives 0.9888 →
+0.9930 AUC but 0.9940 → 0.9629 pAUC. The overall ranking improves slightly while the
+low-false-positive region — the part that determines a usable alarm threshold — regresses. A
+change that looks like an improvement on the headline metric can be a regression on the metric
+that matters operationally. Logged as open in §12.
+
+### 13.4 Conditioning: directionally confirmed, not yet disqualifying
+
+Mahalanobis condition number, train vs val_normal, `mean` pooling:
+
+| case | train | val_normal |
+|---|---|---|
+| 1 | 5.00e4 | 5.46e4 |
+| 2 | 3.38e4 | 5.73e4 |
+| 3 | 1.47e4 | 1.62e4 |
+| 4 | 7.50e4 | 7.69e4 |
+
+Higher for `val_normal` in all four cases, consistent with the smaller n/d ratio (810 samples
+against `mean` pooling's 64 dimensions, versus train's 3240). None cross the 1e6 instability
+threshold under `mean` pooling. This was not tested under `concat_mean_last`, whose baseline
+conditioning already sits at 1e6–1e8 (§2.4) — that pooling mode is where a smaller reference set
+would most plausibly push an already-borderline fold over the threshold. Untested; logged in
+§12.
+
+### 13.5 Decision
+
+**Kept `train` as the default reference set.** The tightening effect is real and mechanistically
+understood, but it improves some heads while hurting others within the same fold, and the one
+case with an unambiguous geometric shift (case2) does not produce an unambiguous scoring
+improvement. Measured at a single seed. Given §7–§8's demonstration that single-seed conclusions
+on this pipeline have twice been wrong in this document already, a one-seed result favoring
+either reference set is not enough to change a default.
