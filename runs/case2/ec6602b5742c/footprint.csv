@@ -1,0 +1,4 @@
+pooling,flash_footprint_fp32_kb,flash_footprint_int8_kb,peak_ram_bytes_kb
+mean,1214,303,107
+max,1214,303,107
+concat_mean_last,1214,303,107
