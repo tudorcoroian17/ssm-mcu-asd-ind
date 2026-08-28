@@ -9,7 +9,6 @@ from src.models.backbone import SSMBackbone
 def profile_mcu_memory(model, input_shape):
     total_weights = sum(p.numel() for p in model.parameters())
     total_biases = sum(b.numel() for b in model.parameters())
-    flash_footprint_fp32 = total_weights * 4 + total_biases * 4
     flash_footprint_int8 = total_weights + total_biases
 
     activation_sizes = []
@@ -44,7 +43,7 @@ def profile_mcu_memory(model, input_shape):
     # Peak RAM is dictated by the single bottleneck layer
     peak_ram_bytes = max(activation_sizes) if activation_sizes else 0
 
-    return flash_footprint_fp32, flash_footprint_int8, peak_ram_bytes
+    return flash_footprint_int8, peak_ram_bytes
 
 def run_profiler(held_out_case: int, config: dict):
     dir_name = train_config_hash(config, held_out_case)
@@ -60,23 +59,26 @@ def run_profiler(held_out_case: int, config: dict):
         x = torch.randn(1, 344, cfg['features']['n_mels'])  # (batch, T, n_mels) -- 344 is a real clip
         model.pooling = pooling
 
-        flash_footprint_fp32, flash_footprint_int8, peak_ram_bytes = profile_mcu_memory(model, x.shape)
+        flash_footprint_int8, peak_ram_bytes = profile_mcu_memory(model, x.shape)
         results.append({
             'pooling': pooling,
-            'flash_footprint_fp32': flash_footprint_fp32,
+            'flash_footprint_fp32': flash_footprint_int8 * 4,
             'flash_footprint_int8': flash_footprint_int8,
-            'peak_ram_bytes': peak_ram_bytes,
+            'peak_ram_fp32_bytes': peak_ram_bytes * 4,
+            'peak_ram_int8_bytes': peak_ram_bytes,
         })
 
     data = [(r['pooling'],
              r['flash_footprint_fp32'] // 1024,
              r['flash_footprint_int8'] // 1024,
-             r['peak_ram_bytes'] // 1024)
+             r['peak_ram_fp32_bytes'] // 1024,
+             r['peak_ram_int8_bytes'] // 1024)
             for r in results]
     df = pd.DataFrame(data, columns=['pooling',
                                      'flash_footprint_fp32_kb',
                                      'flash_footprint_int8_kb',
-                                     'peak_ram_bytes_kb'])
+                                     'peak_ram_fp32_kb',
+                                     'peak_ram_int8_kb'])
     df.to_csv(base_dir / 'footprint.csv', index=False)
 
 if __name__ == '__main__':
