@@ -11,21 +11,9 @@ import matplotlib.pyplot as plt
 
 from runs.compute_hash import train_config_hash
 from src.config import load_config, PROJECT_ROOT
-from src.data.folds import get_fold
-from src.features.stats import compute_normalization_stats
-from src.features.baselines import load_fold_clips
-from src.models.backbone import SSMBackbone
+from src.eval.embeddings import read_embeddings
 
 POOLING_MODES = ['mean', 'max', 'concat_mean_last']
-
-def read_embeddings(held_out_case, config, pooling_mode):
-    dir_name = train_config_hash(config, held_out_case)
-    embeddings_dir = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / dir_name / 'embeddings'
-
-    embeddings = np.load(str(embeddings_dir / f'emb_{pooling_mode}.npz'))
-    return (embeddings['train_emb'], embeddings['val_normal_emb'], embeddings['test_emb'],
-            embeddings['test_labels'], embeddings['mean'], embeddings['std'])
-
 
 def score_euclidean(train_emb, test_emb, seed):
     centroid = train_emb.mean(axis=0)

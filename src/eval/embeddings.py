@@ -1,14 +1,6 @@
-import json
-import random
-
 import numpy as np
 import pandas as pd
 import torch
-from scipy.spatial.distance import cdist
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
-from sklearn.metrics import roc_auc_score, roc_curve
-import matplotlib.pyplot as plt
 
 from runs.compute_hash import train_config_hash
 from src.config import load_config, PROJECT_ROOT
@@ -18,6 +10,14 @@ from src.features.baselines import load_fold_clips
 from src.models.backbone import SSMBackbone
 
 POOLING_MODES = ['mean', 'max', 'concat_mean_last']
+
+def read_embeddings(held_out_case, config, pooling_mode):
+    dir_name = train_config_hash(config, held_out_case)
+    embeddings_dir = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / dir_name / 'embeddings'
+
+    embeddings = np.load(str(embeddings_dir / f'emb_{pooling_mode}.npz'))
+    return (embeddings['train_emb'], embeddings['val_normal_emb'], embeddings['test_emb'],
+            embeddings['test_labels'], embeddings['mean'], embeddings['std'])
 
 def get_embeddings(model, X, device, batch_size=128):
     embeddings = []
