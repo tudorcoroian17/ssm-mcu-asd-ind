@@ -84,6 +84,9 @@ def train_one_fold(held_out_case, cfg):
     best_state = None
     final_train_mse = None
 
+    train_baseline = compute_baselines(X_train, k=k)
+    val_baseline = compute_baselines(X_val, k=k)
+
     all_train_mse = []
     all_val_mse = []
 
@@ -132,6 +135,8 @@ def train_one_fold(held_out_case, cfg):
             local_configs['train_mse'] = final_train_mse
             local_configs['all_train_mse'] = all_train_mse
             local_configs['all_val_mse'] = all_val_mse
+            local_configs['train_skill'] = 1 - final_train_mse / train_baseline['mse_persistence']
+            local_configs['val_skill'] = 1 - val_mse / val_baseline['mse_persistence']
             with open(ckpt_descriptor_path, 'w') as f:
                 json.dump(local_configs, f, indent=4)
 
@@ -148,8 +153,8 @@ def train_one_fold(held_out_case, cfg):
         'held_out_case': held_out_case,
         'best_val_mse': best_val_mse,
         'final_train_mse': final_train_mse,
-        'train_baseline': compute_baselines(X_train, k=k),
-        'val_baseline': compute_baselines(X_val, k=k),
+        'train_baseline': train_baseline,
+        'val_baseline': val_baseline,
         'all_train_mse': all_train_mse,
         'all_val_mse': all_val_mse,
         'model_state': best_state['model'],
