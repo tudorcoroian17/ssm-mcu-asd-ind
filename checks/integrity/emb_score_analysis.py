@@ -29,7 +29,7 @@ def run_analysis(held_out_case, cfg):
 
     for pooling_mode in POOLING_MODES:
         print(f"\n=== case{held_out_case} | pooling: {pooling_mode} ===")
-        train_emb, val_normal_emb, test_emb, test_labels, mean_normal, _ = read_embeddings(held_out_case, cfg, pooling_mode)
+        train_emb, val_normal_emb, _, test_emb, test_labels, mean_normal, _ = read_embeddings(held_out_case, cfg, pooling_mode)
 
         for distance in DISTANCE_HEADS:
             print(f"\n{'=' * 20} distance: {distance} ===")

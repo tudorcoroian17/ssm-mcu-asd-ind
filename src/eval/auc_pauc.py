@@ -110,7 +110,7 @@ def run_case_eval(held_out_case, cfg, device):
 
     for pooling_mode in POOLING_MODES:
         print(f"\n=== case{held_out_case} | pooling: {pooling_mode} ===")
-        train_emb, _, test_emb, test_labels, _, _ = read_embeddings(held_out_case, cfg, pooling_mode)
+        train_emb, _, _, test_emb, test_labels, _, _ = read_embeddings(held_out_case, cfg, pooling_mode)
 
         centroid = train_emb.mean(axis=0)
         plot_embedding_pca(
