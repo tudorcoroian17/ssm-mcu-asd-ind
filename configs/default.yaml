@@ -34,7 +34,6 @@ model:
 
 training:
   horizon_k: 2
-  target: residual
   batch_size: 32
   learning_rate: 1.0e-3
   max_epochs: 100
