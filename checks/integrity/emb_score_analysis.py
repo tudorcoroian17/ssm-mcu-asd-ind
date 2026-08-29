@@ -18,7 +18,7 @@ from runs.compute_hash import train_config_hash
 from src.config import PROJECT_ROOT, load_config
 from src.eval.embeddings import read_embeddings
 
-POOLING_MODES = ['mean', 'max', 'concat_mean_last']
+POOLING_MODES = ['mean', 'max']
 DISTANCE_HEADS = ['euclidean', 'knn_clustered_16', 'knn_full', 'mahalanobis']
 
 def run_analysis(held_out_case, cfg):

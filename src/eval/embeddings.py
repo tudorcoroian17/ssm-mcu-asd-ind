@@ -66,7 +66,7 @@ def get_embeddings_per_fold(held_out_case, cfg, device):
     model.eval()
 
     for pooling_mode in POOLING_MODES:
-        model.pooling_mode = pooling_mode
+        model.pooling = pooling_mode
 
         train_emb = get_embeddings(model, X_train, device)
         val_normal_emb = get_embeddings(model, X_val_normal, device)
