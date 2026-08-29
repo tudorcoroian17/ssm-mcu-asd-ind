@@ -5,7 +5,7 @@ Phase 1, Section 1.10 exit gate, items 3 and 4:
   4. selective=False runs without error.
 
 Run from your project root (same level as src/):
-    python test_stability.py
+    python stability.py
 """
 import sys
 

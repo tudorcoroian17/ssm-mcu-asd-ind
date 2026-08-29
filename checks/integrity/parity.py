@@ -27,7 +27,7 @@ second -- rather than building an independently-random per-timestep tensor,
 so it validates the real forward() path, not a hypothetical one.
 
 Run from your project root:
-    python test_parity.py
+    python parity.py
 """
 import sys
 
