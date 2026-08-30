@@ -1,0 +1,38 @@
+data:
+  channel: ch1
+  eval_balance_ratio: 1.0
+  eval_balance_seed: 0
+  val_fraction: 0.2
+  val_split_seed: 0
+features:
+  center: true
+  f_max: 8000.0
+  f_min: 0.0
+  hop_length: 512
+  htk: false
+  log_eps: 1.0e-06
+  mel_norm: slaney
+  n_fft: 1024
+  n_mels: 64
+  power: 2.0
+  sample_rate: 16000
+model:
+  d_conv: 4
+  d_model: 64
+  d_state: 16
+  discretization: euler
+  expand: 2
+  learned_input_embed: false
+  n_layers: 4
+  n_mels: 64
+  pooling: mean
+  selective: false
+seed: 158
+training:
+  batch_size: 32
+  early_stopping_patience: 10
+  horizon_k: 5
+  learning_rate: 0.001
+  max_epochs: 100
+  min_val_improv_delta: 0.0003
+  target: absolute
