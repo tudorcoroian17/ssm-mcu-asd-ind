@@ -17,7 +17,8 @@ def read_embeddings(held_out_case, config, pooling_mode):
 
     embeddings = np.load(str(embeddings_dir / f'emb_{pooling_mode}.npz'))
     return (embeddings['train_emb'], embeddings['val_normal_emb'], embeddings['val_anomaly_emb'],
-            embeddings['test_emb'], embeddings['test_labels'], embeddings['mean'], embeddings['std'])
+            embeddings['test_emb'], embeddings['test_labels'], embeddings['calib_normal_emb'],
+            embeddings['mean'], embeddings['std'])
 
 def get_embeddings(model, X, device, batch_size=128):
     embeddings = []
@@ -43,17 +44,20 @@ def get_embeddings_per_fold(held_out_case, cfg, device):
     val_normal_set = fold['val'][fold['val']['label'] == 'normal']
     val_anomaly_set = fold['val'][fold['val']['label'] == 'anomaly']
     test_set = fold['test']
+    calib_normal_set = fold['calib_normal']
 
     train_set['used_in'] = ['training' for _ in range(len(train_set))]
     val_normal_set['used_in'] = ['validation_normal' for _ in range(len(val_normal_set))]
-    val_anomaly_set['used_in'] = ['validation_anomaly' for _ in range(len(val_normal_set))]
+    val_anomaly_set['used_in'] = ['validation_anomaly' for _ in range(len(val_anomaly_set))]
     test_set['used_in'] = ['test' for _ in range(len(test_set))]
+    calib_normal_set['used_in'] = ['machine_calibration' for _ in range(len(calib_normal_set))]
 
     manifest = pd.concat([
         train_set,
         val_normal_set,
         val_anomaly_set,
         test_set,
+        calib_normal_set
     ]).reset_index(drop=True)
     manifest.to_csv(str(out_dir / 'manifest.csv'), index=False)
 
@@ -61,6 +65,7 @@ def get_embeddings_per_fold(held_out_case, cfg, device):
     X_val_normal = load_fold_clips(val_normal_set, mean, std)
     X_val_anomaly = load_fold_clips(val_anomaly_set, mean, std)
     X_test = load_fold_clips(test_set, mean, std)
+    X_calib_normal = load_fold_clips(calib_normal_set, mean, std)
     test_labels = (fold['test']['label'].values == 'anomaly').astype(int)
     assert len(X_test) == len(test_labels), "clip/label count mismatch"
 
@@ -76,6 +81,7 @@ def get_embeddings_per_fold(held_out_case, cfg, device):
         val_normal_emb = get_embeddings(model, X_val_normal, device)
         val_anomaly_emb = get_embeddings(model, X_val_anomaly, device)
         test_emb = get_embeddings(model, X_test, device)
+        calib_emb = get_embeddings(model, X_calib_normal, device)
 
         np.savez(
             out_dir / f'emb_{pooling_mode}.npz',
@@ -84,6 +90,7 @@ def get_embeddings_per_fold(held_out_case, cfg, device):
             val_anomaly_emb=val_anomaly_emb,
             test_emb=test_emb,
             test_labels=test_labels,
+            calib_normal_emb=calib_emb,
             mean=mean,
             std=std,
         )

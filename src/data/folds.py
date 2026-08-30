@@ -43,15 +43,23 @@ def get_fold(held_out_case):
                            (manifest['source'] == 'IND') & (manifest['label'] == 'normal')]
     test_anomaly = manifest[(manifest['case_id'] == held_out_case) &
                             (manifest['source'] == 'IND') & (manifest['label'] == 'anomaly')]
+
     test_rng = np.random.default_rng(eval_balance_seed)
     n_normal = int(round(len(test_anomaly) * eval_balance_ratio))
     test_normal_balanced = test_normal.sample(n=n_normal, random_state=test_rng)
+
+    # only for threshold computation on same machine
+    calibration_normal_rows = test_normal.drop(test_normal_balanced.index)
+
     test_rows = pd.concat([test_normal_balanced, test_anomaly]).reset_index(drop=True)
+
+
 
     return {
         'train': train_rows,
         'val': pd.concat([val_normal_rows, ind_anomaly_pool]).reset_index(drop=True),
         'test': test_rows,
+        'calib_normal': calibration_normal_rows,
         'val_fraction': val_fraction, 'split_seed': val_split_seed,
         'balance_seed': eval_balance_seed, 'balance_ratio': eval_balance_ratio,
     }
