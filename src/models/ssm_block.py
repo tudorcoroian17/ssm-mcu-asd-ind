@@ -97,6 +97,8 @@ class SSMBlock(nn.Module):
                 ys.append((h * C).sum(dim=-1))
 
         y = torch.stack(ys, dim=1)
+        if range_recorder is not None:
+            range_recorder.record(f'{name_prefix}.y_scan', y)
         return (y, h_trace) if return_h_trace else y
 
     def forward(self, x, return_h_trace=False, range_recorder=None, block_name=''):
@@ -129,6 +131,9 @@ class SSMBlock(nn.Module):
         delta = F.softplus(delta_raw)  # force delta positive for stability guarantee
         if range_recorder is not None:
             range_recorder.record(f'{block_name}.delta', delta)
+            range_recorder.record(f'{block_name}.B', B)
+            range_recorder.record(f'{block_name}.C', C)
+            range_recorder.record(f'{block_name}.z_gate', z)
 
         A = -torch.exp(self.A_log) # (d_inner, d_state)
 
@@ -150,6 +155,8 @@ class SSMBlock(nn.Module):
         # raw shortcut (D), gate (z), project back to d_model
         y = y + u * self.D
         y = y * F.silu(z)
+        if range_recorder is not None:
+            range_recorder.record(f'{block_name}.y_gated', y)
         out = self.out_proj(y)
         if range_recorder is not None:
             range_recorder.record(f'{block_name}.block_output', out)

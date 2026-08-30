@@ -245,11 +245,18 @@ already written.
 ## 8. Open items
 
 - The residual-versus-absolute pilot has not run. Its result sets the `target` filter for the
-  whole sweep. Blocking.
+  whole sweep. Blocking.  - **DEFFERED AGAIN** since it's a structural decision, not empirical. No need to spend days on training with `target=absolute`. This target option will only be run for the winning config. Models on disk already have `target=relative`.
 - The §4.2 footprint table has not been computed. It may justify reducing the design below 72
   configurations before stage 1 starts.
 - Whether the stage 2 top-5 threshold is the right cut is untested. If the top 20 on case 1 fall
   within one seed standard deviation (0.0132), widen it or accept that the design space is flat
   and report that as the finding.
-- `03_phase_2_ablation_and_loso.md`'s handoff manifest item 4, `parity_vectors.npz`, is unchanged
-  by this decision and still gates Phase 4.
+- `parity_vectors.npz` and `parity_vectors_meta.json` exist for all four folds
+  of the default config (`584eb86deba0.yaml`), generated before any
+  `ssm_block.py` restructuring. Validated three ways: byte-identical across two
+  runs; `pooled_mean` matches the time-mean of `final_norm_output` to 1.19e-07;
+  and `pooled_mean` matches the corresponding row of
+  `embeddings/emb_mean.npz` to 2.38e-07, which crosses an independent code
+  path. Phase 4's parity threshold is set at 1e-5, roughly 70x the measured
+  float32 floor and in line with MambaLite-Micro's reported 1.7e-5
+  (master doc section 3).

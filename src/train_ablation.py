@@ -176,7 +176,7 @@ if __name__ == "__main__":
         if ckpt_path.exists():
             print(f"{row['config_name']} case{case} -> {model_hash} already cached at {ckpt_path}")
             continue
-        config_file = load_config_by_name(str(configs_root / row['config_name']))
+        config_file = load_config_by_name(row['config_name'])
 
         # The manifest supplies the directory name, so a config_name/model_hash
         # mismatch across 288 generated files would silently write one config's
