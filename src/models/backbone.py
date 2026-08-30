@@ -52,7 +52,7 @@ class SSMBackbone(nn.Module):
         self.norms = nn.ModuleList([RMSNorm(d_model) for _ in range(n_layers)])
         self.final_norm = RMSNorm(d_model)
 
-    def forward(self, x, mode = 'sequence'):
+    def forward(self, x, mode = 'sequence', range_recorder = None):
         """
         x: (batch, T, d_model) — d_model == n_mels here, since
            model.learned_input_embed is False (no input embedding layer).
@@ -64,15 +64,20 @@ class SSMBackbone(nn.Module):
               "pooled" -> (batch, d_model). What Option 3's distance head
               consumes at inference.
         """
-        for block, norm in zip(self.blocks, self.norms):
-            x = x + block(norm(x)) # pre-norm residual
+        for i, (block, norm) in enumerate(zip(self.blocks, self.norms)):
+            x = x + block(norm(x), range_recorder=range_recorder, block_name=f'block{i}')  # pre-norm residual
 
         x = self.final_norm(x)
+        if range_recorder is not None:
+            range_recorder.record('final_norm_output', x)
 
         if mode == 'sequence':
             return x
         elif mode == 'pooled':
-            return self._pool(x)
+            pooled = self._pool(x)
+            if range_recorder is not None:
+                range_recorder.record('pooled_output', pooled)
+            return pooled
         else:
             raise ValueError(f"Unknown mode: {mode}")
 

@@ -45,7 +45,7 @@ class SSMBlock(nn.Module):
         self.D = nn.Parameter(torch.ones(self.d_inner))
         self.out_proj = nn.Linear(self.d_inner, d_model, bias=False)
 
-    def discretize(self, delta, A, B):
+    def discretize(self, delta, A, B, range_recorder=None, name_prefix=''):
         deltaA = delta.unsqueeze(-1) * A # (..., d_inner, d_state)
         if self.discretization == "zoh":
             A_bar = torch.exp(deltaA)
@@ -59,9 +59,13 @@ class SSMBlock(nn.Module):
         else:
             raise ValueError(f'Unknown discretization: {self.discretization}')
 
+        if range_recorder is not None:
+            range_recorder.record(f'{name_prefix}.A_bar', A_bar)
+            range_recorder.record(f'{name_prefix}.B_bar', B_bar)
+
         return A_bar, B_bar
 
-    def _scan(self, A_bar, B_bar, C, u, return_h_trace=False):
+    def _scan(self, A_bar, B_bar, C, u, return_h_trace=False, range_recorder=None, name_prefix=''):
         batch, T = u.shape[0], u.shape[1]
         h = torch.zeros(batch, self.d_inner, self.d_state, device=u.device, dtype=u.dtype)
         h_trace = [] if return_h_trace else None
@@ -79,6 +83,8 @@ class SSMBlock(nn.Module):
                 h = torch.addcmul(Bu_t, A_bar_ts[t], h)  # Bu_t + A_bar_ts[t] * h, one kernel
                 if return_h_trace:
                     h_trace.append(h.detach().abs().max().item())
+                if range_recorder is not None and t % 10 == 0:
+                    range_recorder.record(f'{name_prefix}.h', h)
                 ys.append((h * C_ts[t].unsqueeze(1)).sum(dim=-1))
         else:
             for t in range(T):
@@ -86,12 +92,14 @@ class SSMBlock(nn.Module):
                 h = torch.addcmul(Bu_t, A_bar_ts[t], h)
                 if return_h_trace:
                     h_trace.append(h.detach().abs().max().item())
+                if range_recorder is not None and t % 10 == 0:
+                    range_recorder.record(f'{name_prefix}.h', h)
                 ys.append((h * C).sum(dim=-1))
 
         y = torch.stack(ys, dim=1)
         return (y, h_trace) if return_h_trace else y
 
-    def forward(self, x, return_h_trace=False):
+    def forward(self, x, return_h_trace=False, range_recorder=None, block_name=''):
         # return_h_trace is just a debug hook
         batch, T, _ = x.shape
 
@@ -103,7 +111,9 @@ class SSMBlock(nn.Module):
         u = u.transpose(1, 2) # (batch, d_inner, T)
         u = self.conv(u)[:, :, :T] # grab all values on dim1 and dim2; grab all values up to (not including) T on dim3
         u = u.transpose(1, 2) # (batch, T, d_inner)
-        u = F.silu(u) # add non-linearity so in_proj + conv + x_proj don't collapse into one linear map
+        u = F.silu(u)  # add non-linearity so in_proj + conv + x_proj don't collapse into one linear map
+        if range_recorder is not None:
+            range_recorder.record(f'{block_name}.u_post_conv_silu', u)
 
         if self.selective:
             x_dbl = self.x_proj(u) # (batch, T, dt_rank + 2 * d_inner) -> dim 3 has delta, B, and C
@@ -116,13 +126,15 @@ class SSMBlock(nn.Module):
             B = self.B # (d_inner)
             C = self.C # (d_inner)
 
-        delta = F.softplus(delta_raw) # force delta positive for stability guarantee
+        delta = F.softplus(delta_raw)  # force delta positive for stability guarantee
+        if range_recorder is not None:
+            range_recorder.record(f'{block_name}.delta', delta)
 
         A = -torch.exp(self.A_log) # (d_inner, d_state)
 
         # Materialize A_bar, B_bar at full to take advantage of GPU parallelism
         # On MCU, should only materialize A_bar_t, B_bar_t (per timestep)
-        A_bar, B_bar = self.discretize(delta, A, B) # (batch, T, d_inner, d_state)
+        A_bar, B_bar = self.discretize(delta, A, B, range_recorder=range_recorder, name_prefix=block_name) # (batch, T, d_inner, d_state)
 
         # fixed branch never gets a batch/T dimension from discretize()
         # (delta/A/B have none to broadcast against), but _scan()'s A_bar[:, t]
@@ -132,11 +144,13 @@ class SSMBlock(nn.Module):
             B_bar = B_bar.unsqueeze(0).unsqueeze(0).expand(batch, T, -1, -1)
 
         # the scan itself; sequential, one frame at a time
-        result = self._scan(A_bar, B_bar, C, u, return_h_trace)
+        result = self._scan(A_bar, B_bar, C, u, return_h_trace, range_recorder=range_recorder, name_prefix=block_name)
         y, h_trace = result if return_h_trace else (result, None)
 
         # raw shortcut (D), gate (z), project back to d_model
         y = y + u * self.D
         y = y * F.silu(z)
         out = self.out_proj(y)
-        return (out, h_trace) if return_h_trace else out # (batch, T, d_model)
+        if range_recorder is not None:
+            range_recorder.record(f'{block_name}.block_output', out)
+        return (out, h_trace) if return_h_trace else out  # (batch, T, d_model)
