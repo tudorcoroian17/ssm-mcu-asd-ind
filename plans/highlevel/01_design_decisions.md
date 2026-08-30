@@ -224,9 +224,11 @@ Three things settled during Phase 1 that change how earlier sections should be r
 
 §7.2 hedged that AdamW, gradient clipping, and ReduceLROnPlateau "should be re-applied regardless" of CNT versus IND, then walked it back to "start with defaults." The defaults are correct and the hedge should be retired: sixteen training runs (four folds × three seeds, plus a reproducibility re-run) all descended smoothly with no oscillation. The CNT-era val_mse instability does not reproduce on IND. Do not add optimizer machinery to Phase 2 without a fresh, specific reason.
 
-### 8.2 The prediction target is fixed at residual, without a pilot. 
+### 8.2 The prediction target pilot — planned between Phase 1 and Phase 2, not deferred indefinitely.
 
-Phase 1 §1.5 called for a cheap pilot comparing residual against absolute target before the ablation. It was not run, and the training.target config key has been removed rather than left dead — compute_loss() hardcodes the residual form. The justification is §3's: with the residual target, the persistence solution becomes "output all zeros" and earns no credit, which is a structural argument rather than an empirical one. Recording the decision here so a reader does not go looking for pilot data that does not exist. If Phase 2 has budget to spare, the pilot is still cheap; it is not a blocker.
+Phase 1 §1.5 called for a cheap pilot comparing residual against absolute target before the ablation. It was not run during Phase 1, and at that point the `training.target` config key had been removed rather than left dead. **Status now: the key is back in `default.yaml`, and the pilot is scheduled to run before Phase 2 begins**, not merely "if budget allows." `compute_loss()` needs one fix before that run is meaningful — it currently hardcodes the residual form regardless of the config key, which would make an `absolute`-target run silently train residual again. Fix is a three-line change to `compute_loss()`'s signature and its two call sites in `train.py`.
+
+The original justification for residual (§3: under the residual target, the persistence solution becomes "output all zeros" and earns no credit) is structural, not empirical, and stands regardless of this pilot's outcome. What the pilot adds is the empirical side: does absolute targeting, despite handing the degenerate solution partial credit, still learn comparably — or does the structural argument's predicted gap actually show up in skill score and downstream AUC. Record the result here once the run completes, alongside the fix that made it possible.
 
 ### 8.3 Loudness confounding survived the data rebuild and is now a dataset-level property. 
 

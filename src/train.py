@@ -34,13 +34,18 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def compute_loss(model, head, x, k):
+def compute_loss(model, head, x, k, target_mode='residual'):
     # x: (batch, T, n_mels), normalized. Same slicing convention as baselines.py
     seq_out = model(x, mode='sequence')
     pred_residual = head(seq_out)
-
     pred_valid = pred_residual[:, :-k, :]
-    target = x[:, k:, :] - x[:, :-k, :]
+
+    if target_mode == 'residual':
+        target = x[:, k:, :] - x[:, :-k, :]
+    elif target_mode == 'absolute':
+        target = x[:, k:, :]
+    else:
+        raise ValueError(f"Unknown training.target: {target_mode}")
     return F.mse_loss(pred_valid, target)
 
 def train_one_fold(held_out_case, cfg):
@@ -53,6 +58,7 @@ def train_one_fold(held_out_case, cfg):
     }
     set_seed(cfg['seed'])
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    target_mode = cfg['training']['target']
 
     fold = get_fold(held_out_case)
     k = cfg['training']['horizon_k']
@@ -99,7 +105,7 @@ def train_one_fold(held_out_case, cfg):
         for x in tqdm(train_loader, desc=f'epoch {epoch}'):
             x = x.to(device)
             optimizer.zero_grad()
-            loss = compute_loss(model, head, x, k)
+            loss = compute_loss(model, head, x, k, target_mode=target_mode)
             loss.backward()
             optimizer.step()
             train_losses.append(loss.item())
@@ -112,7 +118,7 @@ def train_one_fold(held_out_case, cfg):
         with torch.no_grad():
             for x in val_loader:
                 x = x.to(device)
-                val_losses.append(compute_loss(model, head, x, k).item())
+                val_losses.append(compute_loss(model, head, x, k, target_mode=target_mode).item())
         val_mse = float(np.mean(val_losses))
 
         print(f"epoch {epoch}: train_mse={final_train_mse:.5f}  |  val_mse={val_mse:.5f}  "

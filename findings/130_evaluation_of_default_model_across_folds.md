@@ -456,6 +456,8 @@ itself (~156 KB int8, per `helpers/vis_inspect_model.py`).
 using a quarter of the memory and avoiding conditioning problems entirely. Report `knn_full` as
 an accuracy upper bound.
 
+**This recommendation is AUC-based and incomplete on its own.** Under threshold calibration on training-case data, this exact head degenerates to flagging every clip as anomalous in all four folds — see `findings/140_thresholds_and_secondary_metrics.md` §3–§4. It is only deployable with same-machine threshold calibration, which restores it to near-oracle F1 (0.944 mean). Read this section together with `findings/140` §9, not in isolation.
+
 ---
 
 ## 12. Open items and known defects

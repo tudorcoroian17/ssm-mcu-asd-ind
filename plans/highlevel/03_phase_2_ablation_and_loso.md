@@ -1,6 +1,6 @@
 # Phase 2 — Ablation + LOSO Harness
 
-**Prerequisites**: Phase 1 handoff manifest, materialised — available, see 02_phase_1_gpu_prototype.md. Per-run wall-clock resolved at ~53 min/fold, which makes §2.2's arithmetic decidable. One Phase 1 leftover is a hard prerequisite: ranges.json. Phase 2 produces the winning checkpoint that Phase 4 ports and Phase 5 quantizes; if range logging is not in train.py before the sweep runs, 172 runs' worth of activation statistics are lost and the winning config needs a re-run to recover them.
+**Prerequisites**: Phase 1 handoff manifest, materialised and complete — see `02_phase_1_gpu_prototype.md`. Per-run wall-clock resolved at ~53 min/fold, which makes §2.2's arithmetic decidable. `ranges.json` logging is in place (`findings/150`) and will fire automatically on every sweep run, so the 172-run activation-statistics risk this section originally flagged no longer applies. **New prerequisite, not in the original Phase 1 scope:** a residual-vs-absolute target pilot (`01_design_decisions.md` §8.2) is planned to run first — its winner becomes the `training.target` value for the entire sweep, so it needs to land before axis 2 starts.
 **Goal:** resolve the master doc Section 1 placeholders (`[X]%`, `[selective / fixed-parameter]`, `[selectivity / state dimension]`) and produce both LOSO variants.
 **Can share a session with Phase 1** (master doc Section 18).
 
@@ -117,7 +117,7 @@ This is the manifest that makes a future Phase 4 session productive rather than 
 2. **Trained checkpoint** for that config.
 3. **Exact parameter count and per-tensor shapes** — every weight, dtype, byte count. This is what gets compared against each board's flash budget.
 4. **`parity_vectors.npz`** — the critical one. An input frame sequence, every intermediate tensor (post-conv, delta, B, C, A_bar, hidden state at selected timesteps, final embedding), and the resulting anomaly score. MambaLite-Micro validated their C engine against a PyTorch reference to ~1.7×10⁻⁵ (master doc Section 3). You cannot run that test in Phase 4 without these vectors, and generating them afterwards means rebuilding a training environment you have moved on from.
-5. **`ranges.json`** — per-tensor activation dynamic ranges. Phase 5 input.
-6. **Fitted Option 3 head parameters** — centroid, covariance/inverse, thresholds from all three Section 9.1 methods.
+5. **`ranges.json`** — per-tensor activation dynamic ranges. Phase 5 input. See `findings/150` for the risks already identified from Phase 1's folds — the winning config's own ranges still need collecting once it exists, this is not a rerun of the same numbers.
+6. **Fitted Option 3 head parameters** — centroid, covariance/inverse, and the calibration threshold from `findings/140`'s recommended method (same-machine percentile, not the original training-case-calibrated methods in `01_eval_spec.md` §6 alone).
 7. **Prediction-head weights** — needed for the fused-score variant (`01_design_decisions.md` §4).
 8. **The measured accuracy ceiling** — cell (3) of master doc Section 12.

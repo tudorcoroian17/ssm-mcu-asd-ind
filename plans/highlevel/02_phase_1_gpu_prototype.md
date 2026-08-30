@@ -258,7 +258,7 @@ Fixed commitments:
 
 - **Normal recordings only, every fold.** Master doc Section 14, non-revisitable.
 - **Residual target** and **`k ≥ 2`** per `01_design_decisions.md` §3. Run one cheap pilot on a single fold comparing residual vs absolute target before the ablation — if residual wins as expected, fix it and do not spend a nested-validation axis on it.
-- **Log per-tensor activation min/max/percentiles** into `runs/<id>/ranges.json`. This feels premature. It is not — Phase 5 cannot diagnose quantization failures without it.
+- **Log per-tensor activation min/max/percentiles** into `runs/<id>/ranges.json`. This feels premature. It is not — Phase 5 cannot diagnose quantization failures without it. **Done** — `checks/smoke/activation_ranges.py`, all four folds. See `findings/150_ranges_and_activations_for_quantization.md`, which also surfaced findings Phase 5 will want going in: a per-layer activation-range blowup that argues against a shared quantization scale, and a dynamic-range problem in `delta` specific enough to need per-channel or log-scale handling.
 - **Early stopping** on a validation signal that never touches the outer held-out case. Decide the split now.
 - The prediction head is **dropped at inference** for the distance-only configuration, and **retained** for the fused configuration (`01_design_decisions.md` §4). Keep the checkpoint for both.
 
@@ -293,7 +293,7 @@ Fit on training-fold normal embeddings only. Four variants, ordered by on-device
 - **Per-case results, never a single averaged number** (Section 14 small-N caveat).
 - Implement all three Section 9.1 threshold methods now: percentile-based (primary), chi-square analytic (cross-check), labeled-anomaly-calibrated (upper bound, flagged in writeup).
 
-Status: AUC and pAUC are implemented (src/eval/auc_pauc.py) and reported per case, never averaged. The three threshold methods and the four secondary metrics are in progress as src/eval/thresholds.py — see 01_eval_spec.md §6 for the reporting contract and §10 for the calibration-population caveat that applies to all three. Note that the chi-square method applies to Mahalanobis only; the chi-square derivation is specific to squared Mahalanobis distance and applying it to Euclidean or kNN scores would produce a fabricated number rather than a cross-check.
+Status: complete. AUC and pAUC (src/eval/auc_pauc.py) reported per case, never averaged. Threshold methods and secondary metrics (src/eval/thresholds.py) done for all four folds — see findings/140_thresholds_and_secondary_metrics.md. The chi-square method applies to Mahalanobis only, as originally scoped; the same-machine calibration finding in findings/140 §4 supersedes 01_eval_spec.md §10's original framing with the full numeric picture and a fourth threshold method.
 
 ---
 
@@ -388,4 +388,5 @@ Do not start Phase 2 until **all** of:
   - Persisted embeddings and scores per pooling $\times$ head
   - Memory-footprint estimate (`footprint.csv`)
   - Three-seed archive under `archive/SEED_*/`
-- **Missing:** `ranges.json` (§1.5), threshold-method outputs (§1.7)
+- **`ranges.json`** (§1.5) — `runs/case{N}/<hash>/ranges.json`, all four folds. See `findings/150_ranges_and_activations_for_quantization.md`.
+- **Threshold-method outputs** (§1.7) — `runs/case{N}/<hash>/{threshold_metrics, thresholds_same_machine, threshold_diagnostics}.json`, all four folds. See `findings/140_thresholds_and_secondary_metrics.md`.

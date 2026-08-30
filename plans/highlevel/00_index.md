@@ -102,9 +102,11 @@ Continuing master doc Section 17's numbering.
 
 ## Immediate next action
 
-**Phase 1 is complete**. All eight exit-gate items in 02_phase_1_gpu_prototype.md §1.10 pass, and the handoff manifest is materialised under runs/case{N}/<hash>/. Two Phase 1 items were deliberately deferred rather than dropped, and both are Phase 2 prerequisites:
+**Phase 1 is fully complete.** All eight exit-gate items in `02_phase_1_gpu_prototype.md` §1.10 pass, and both items previously deferred are now done:
 
-- **`ranges.json`** — per-tensor activation min/max/percentiles, Phase 1 §1.5. Not yet implemented; train.py still has ranges = {} with a TODO. Phase 5 cannot diagnose quantization failures without it, and every checkpoint trained before it exists has no range record.
-- **Threshold methods and secondary metrics** — src/eval/thresholds.py, per 01_eval_spec.md §6. In progress.
+- **`ranges.json`** — implemented (`checks/smoke/activation_ranges.py`), populated for all four folds. See `findings/150_ranges_and_activations_for_quantization.md`.
+- **Threshold methods and secondary metrics** — implemented (`src/eval/thresholds.py`), all four folds, including the same-machine calibration fix and five additional threshold-estimation methods beyond `01_eval_spec.md` §6's original three. See `findings/140_thresholds_and_secondary_metrics.md`.
 
-Phase 2's first action is 03_phase_2_ablation_and_loso.md §2.3 step 1: the selective-versus-fixed axis, since it reshapes the entire second half of the project.
+**One thing to do before Phase 2 starts, not part of Phase 2 itself:** a deferred pilot from Phase 1 §1.5 — residual versus absolute prediction target — is now planned, to run between Phase 1 and Phase 2. `compute_loss()` in `train.py` needs a one-line fix first (DONE); see `01_design_decisions.md` §8.2 for the current status.
+
+Phase 2's first action, once that pilot is done, is `03_phase_2_ablation_and_loso.md` §2.3 step 1: the selective-versus-fixed axis, since it reshapes the entire second half of the project.

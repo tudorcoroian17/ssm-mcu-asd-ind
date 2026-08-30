@@ -66,13 +66,14 @@ This is why §4's balancing decision matters specifically for this section: it r
 
 ## 6. Threshold methods — compute all four secondary metrics under each
 
-Per Phase 1 §1.7 / master doc §9.1, three threshold methods are implemented regardless:
+Per Phase 1 §1.7 / master doc §9.1, three threshold methods were originally scoped. A fourth was added after §10 (below) found the first three fail systematically under LOSO, and it is now the recommended method — full treatment in `findings/140_thresholds_and_secondary_metrics.md`.
 
-1. **Percentile-based** (primary)
-2. **Chi-square analytic** (cross-check)
-3. **Labeled-anomaly-calibrated** (upper bound, flagged in writeup as using label information a real deployment wouldn't have)
-4. **Cross-fold skill scores are not comparable in absolute terms**. Per-fold mse_persistence depends on which cases are in the normalization-stats pool, and that alone produced a 3.1× spread in the CNT era (findings/110). Under IND the spread is far smaller (ratio 0.0666–0.0756 across folds, runs/baselines/toycar_all_folds_k2_baselines.json), but the mechanism is unchanged. Report per-fold skill individually; never pool it into one cross-fold average without this caveat attached. This is a second, independent reason alongside the small-N caveat. 
-5. **Phase 2's ablation deltas partly reflect this normalization effect**. When a config is compared against the default across folds, part of the fold-to-fold delta comes from differing baseline scaling rather than from the ablated axis. Note it explicitly in ablation tables.
+1. **Percentile-based**, calibrated on training-case validation normals — kept for record; degenerates in 12+ of 27 configurations under LOSO (§10).
+2. **Chi-square analytic** (cross-check, Mahalanobis only).
+3. **Labeled-anomaly-calibrated** — not an upper bound under LOSO; scores below method 1 in most configurations (`findings/140` §3).
+4. **Same-machine percentile** (`findings/140` §4) — calibrated on held-out-case normals discarded during §4's 1:1 test balancing. Leakage-free, closes 86–97% of the oracle gap on `mean`/`max` pooling heads. **Primary method, going forward.** `findings/140` §6 additionally evaluates EVT, parametric fitting, KDE, MAD, and IQR against this calibration pool — parametric fitting at a 1%-false-alarm target beats plain percentile on the two deployment-candidate heads.
+5. **Cross-fold skill scores are not comparable in absolute terms**. Per-fold mse_persistence depends on which cases are in the normalization-stats pool, and that alone produced a 3.1× spread in the CNT era (findings/110). Under IND the spread is far smaller (ratio 0.0666–0.0756 across folds, runs/baselines/toycar_all_folds_k2_baselines.json), but the mechanism is unchanged. Report per-fold skill individually; never pool it into one cross-fold average without this caveat attached. This is a second, independent reason alongside the small-N caveat. 
+6. **Phase 2's ablation deltas partly reflect this normalization effect**. When a config is compared against the default across folds, part of the fold-to-fold delta comes from differing baseline scaling rather than from the ablated axis. Note it explicitly in ablation tables.
 
 **Requirement:** report precision, recall, accuracy, and F1 **separately under each threshold method**, clearly labeled. Do not report a single set of numbers without stating which threshold produced them — the same model can look materially different at different operating points.
 
@@ -135,6 +136,6 @@ Early stopping uses validation normals only — anomalies are reserved for calib
 **Broad impact across threshold methods:** This discrepancy applies to every thresholding method in **§6**, not merely fusion. Any deployed threshold calibrated on normals from other machines will be systematically miscalibrated on the target machine. This provides empirical confirmation for the open question raised in master doc **§9.1** (*"does the threshold need to be per-machine-calibrated?"*).
 
 **Reporting requirements:**
-- When reporting the percentile and chi-square thresholds from **§6**, explicitly state that they are calibrated on training-case normals.
-- Note that a real-world deployment would instead calibrate against normal operating audio collected directly from the installed unit post-installation.
-- Frame the LOSO operating points as expectedly pessimistic: this represents a meaningful finding regarding domain transferability, not an experimental flaw in the protocol.
+- When reporting methods 1–3 from **§6**, explicitly state that they are calibrated on training-case normals and are pessimistic by construction.
+- Method 4 (same-machine calibration) is the one to report as the deployment number — see `findings/140` §4 and §9 for the full result and the current recommendation.
+- Frame the gap between methods 1–3 and method 4 as itself a reportable finding about domain transferability, not an experimental flaw in the protocol. `findings/140` §3 has the quantified version of this (12 of 27 configurations classify every clip as anomalous under method 1; oracle F1 stays 0.87–0.97 throughout, confirming the loss is calibration, not ranking).
