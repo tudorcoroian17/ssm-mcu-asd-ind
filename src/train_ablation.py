@@ -20,37 +20,7 @@ from src.features.baselines import load_fold_clips, compute_baselines
 from src.models.backbone import SSMBackbone
 from src.models.heads import PredictionHead
 from runs.compute_hash import train_config_hash
-
-class ClipDataset(Dataset):
-    def __init__(self, X: np.ndarray):
-        self.X = torch.from_numpy(X).float()
-
-    def __len__(self):
-        return self.X.shape[0]
-
-    def __getitem__(self, idx):
-        return self.X[idx]
-
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
-def compute_loss(model, head, x, k, target_mode='residual'):
-    # x: (batch, T, n_mels), normalized. Same slicing convention as baselines.py
-    seq_out = model(x, mode='sequence')
-    pred_residual = head(seq_out)
-    pred_valid = pred_residual[:, :-k, :]
-
-    if target_mode == 'residual':
-        target = x[:, k:, :] - x[:, :-k, :]
-    elif target_mode == 'absolute':
-        target = x[:, k:, :]
-    else:
-        raise ValueError(f"Unknown training.target: {target_mode}")
-    return F.mse_loss(pred_valid, target)
+from src.train import ClipDataset, set_seed, compute_loss
 
 def train_one_fold(held_out_case, cfg, dir_name):
     local_configs = {
@@ -196,10 +166,17 @@ if __name__ == "__main__":
     print(f'{len(queue)} configs in queue')
 
     default_cfg = load_config()
-    for index, row in config_manifest.iterrows():
+    for index, row in queue.iterrows():
         case = int(row['held_out_case'])
-        config_file = load_config_by_name(str(configs_root / row['config_name']))
         model_hash = row['model_hash']
+        ckpt_path = runs_root / f'case{case}' / model_hash / 'ckpt.pt'
+
+        # Disk is the resume state, not a manifest column: a crash between
+        # torch.save and a CSV write would desync the two.
+        if ckpt_path.exists():
+            print(f"{row['config_name']} case{case} -> {model_hash} already cached at {ckpt_path}")
+            continue
+        config_file = load_config_by_name(str(configs_root / row['config_name']))
 
         # The manifest supplies the directory name, so a config_name/model_hash
         # mismatch across 288 generated files would silently write one config's
@@ -211,13 +188,6 @@ if __name__ == "__main__":
         # import time. Correct only while every ablation shares these blocks.
         assert config_file['data'] == default_cfg['data'], 'data block differs from default'
         assert config_file['features'] == default_cfg['features'], 'features block differs from default'
-
-        ckpt_path = runs_root / f'case{case}' / model_hash / 'ckpt.pt'
-
-        # Disk is the resume state, not a manifest column: a crash between
-        # torch.save and a CSV write would desync the two.
-        if ckpt_path.exists():
-            continue
 
         print(f"\n=== {row['config_name']} case{case} -> {model_hash} ===")
         t0 = time.time()
@@ -232,6 +202,7 @@ if __name__ == "__main__":
             'best_val_mse': None,
             'epochs_run': None,
             'error': None,
+            'elapsed_s': None
         }
 
         try:
