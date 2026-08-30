@@ -2,6 +2,8 @@
 
 **Companion to `01_design_decisions.md`.** Resolves open items from Phase 1 §1.1 (channel policy) and §1.7 (evaluation) based on inspecting the actual ToyCar dataset on disk.
 
+**Status: partially superseded**. Written 2026-08-01, before the IND-only restart. §1 (data source split) and §9 (validation split) describe the CNT-based pipeline and no longer reflect this project — see 01_design_decisions.md §7 and §4b/§9 below for what replaced them. §2 (channel policy), §3 (anomaly counts), §4 (eval balancing), §5 (metrics), §6 (threshold methods), §7 (reporting), and §8 (bootstrap CIs) are unaffected and remain current. CNT-era text is kept as record, not deleted.
+
 ---
 
 ## 1. Data source split — resolved
@@ -10,15 +12,17 @@ The raw dataset splits each case into three subfolders: `AnomalousSound_IND`, `N
 
 **Verified on disk (case1, representative):** `NormalSound_CNT` contains ~36 hours of unique continuous audio per case (4 channels × ~9h each); `NormalSound_IND` covers only ~4.1 hours per case as fixed 11.0s clips. The ratio (~8.7×) rules out "IND is CNT fully chopped up" — IND is a curated subsample, not an exhaustive segmentation of CNT.
 
-**Resolution:**
+**Resolution — SUPERSEDED.** `CNT` is dropped entirely. Silence contamination in the `CNT` training pool made the original volume argument moot; see `01_design_decisions.md` §7.2 for the contamination finding and §7.3 for the decisive `IND`-only experiment (train/val skill gap collapsing from 0.369 to 0.003). Current pool assignment:
 
-| source | role | why |
-|---|---|---|
-| `NormalSound_CNT` | **training pool**, sliced into fixed-length windows (window length is a free choice, not tied to 11s) | ~9× more unique normal audio per case than IND; matches the design doc §2 goal of maximizing self-supervised supervision density |
-| `NormalSound_IND` + `AnomalousSound_IND` | **evaluation pool**, held-out case only | already fixed-length (11.0s), matched format, clean apples-to-apples AUC scoring per DCASE convention |
-| `EnvironmentalNoise_CNT` | excluded from core manifest | not machine-sound, doesn't fit the normal/anomaly binary; park for a possible later noise-robustness check |
+| Source | Role | Why |
+| :--- | :--- | :--- |
+| `NormalSound_IND`, training cases | Training pool (80%) and validation pool (20%), split by `data.val_split_seed` | Every frame is real signal by construction; no filtering needed |
+| `AnomalousSound_IND`, training cases | Threshold-calibration pool (§6 method 3) | Never used for gradient updates or early stopping |
+| `NormalSound_IND` + `AnomalousSound_IND`, held-out case | Evaluation pool, balanced 1:1 (§4) | Apples-to-apples AUC scoring per DCASE convention |
+| `NormalSound_CNT` | Excluded entirely | Silence contamination, unevenly distributed across cases |
+| `EnvironmentalNoise_CNT` | Excluded | Not machine sound; park for a later noise-robustness check |
 
-**Why this avoids leakage without needing to check CNT/IND overlap directly:** in any LOSO fold, the held-out case's `CNT` is never used for training (only cases 2/3/4's `CNT` is). Whether a case's own `IND` clips happen to be a subsample of its own `CNT` is therefore irrelevant — that case's `CNT` isn't in play when its `IND` is being scored.
+The leakage argument in the original text still holds and is now simpler: in any LOSO fold, the held-out case contributes nothing to training, validation, or calibration — only to test.
 
 ## 2. Channel policy — resolved
 
@@ -67,6 +71,8 @@ Per Phase 1 §1.7 / master doc §9.1, three threshold methods are implemented re
 1. **Percentile-based** (primary)
 2. **Chi-square analytic** (cross-check)
 3. **Labeled-anomaly-calibrated** (upper bound, flagged in writeup as using label information a real deployment wouldn't have)
+4. **Cross-fold skill scores are not comparable in absolute terms**. Per-fold mse_persistence depends on which cases are in the normalization-stats pool, and that alone produced a 3.1× spread in the CNT era (findings/110). Under IND the spread is far smaller (ratio 0.0666–0.0756 across folds, runs/baselines/toycar_all_folds_k2_baselines.json), but the mechanism is unchanged. Report per-fold skill individually; never pool it into one cross-fold average without this caveat attached. This is a second, independent reason alongside the small-N caveat. 
+5. **Phase 2's ablation deltas partly reflect this normalization effect**. When a config is compared against the default across folds, part of the fold-to-fold delta comes from differing baseline scaling rather than from the ablated axis. Note it explicitly in ablation tables.
 
 **Requirement:** report precision, recall, accuracy, and F1 **separately under each threshold method**, clearly labeled. Do not report a single set of numbers without stating which threshold produced them — the same model can look materially different at different operating points.
 
@@ -99,18 +105,36 @@ Per Phase 1 §1.7 / master doc §9.1, three threshold methods are implemented re
 
 **Problem:** §1.5 requires an early-stopping validation signal that never touches the held-out case. §6's threshold methods (percentile, chi-square) need known-normal scores to calibrate against, and method 3 needs labeled anomalies — none of which should come from the test pool itself, or threshold calibration leaks into the metrics it's supposed to produce.
 
-**Resolution: reuse the training cases' own `IND` clips, currently unused in each fold.** Training draws only from `CNT` (§1); evaluation draws only from the held-out case's `IND` (§1). That leaves each training case's `IND` — both `NormalSound_IND` and `AnomalousSound_IND` — untouched, already cached, already fixed-length, and by construction never overlapping the held-out case.
+**Resolution — REVISED for IND-only.** The original argument depended on training drawing exclusively from `CNT`, leaving training-case `IND` free. That no longer holds. The pools are now carved out of training-case `IND` directly, as implemented in `src/data/folds.py`:
 
-Three pools per fold, no data reused across purposes:
+| Pool | Source | Used For |
+| :--- | :--- | :--- |
+| **Train** | Training-case `IND` normals, 80% split by `val_split_seed` | Gradient updates (next-frame prediction loss) |
+| **Validation (normal)** | Training-case `IND` normals, remaining 20% | Early stopping; percentile and chi-square threshold calibration (§6) |
+| **Validation (anomaly)** | Training-case `IND` anomalies, all | Labelled-anomaly threshold calibration only (§6 method 3) |
+| **Test** | Held-out case `IND`, normal + anomaly, 1:1 balanced (§4) | Final reported metrics |
 
-| pool | source | used for |
-|---|---|---|
-| train | `CNT`, training cases, normal only | gradient updates (next-frame prediction loss) |
-| validation | `IND`, training cases, normal + anomaly | early stopping; threshold calibration (§6) |
-| test | `IND`, held-out case, normal + anomaly, 1:1 balanced (§4) | final reported metrics |
+Early stopping uses validation normals only — anomalies are reserved for calibration and never influence training. The held-out case is untouched by every pool above.
 
-Validation-normal feeds the percentile and chi-square threshold methods; validation-anomaly feeds the labeled-anomaly-calibrated method. No new data collection or caching required — this is a purpose assignment on data already inventoried.
+**Consequence worth stating explicitly:** Train and validation are now drawn from the same clip population, which is exactly why the train/val skill gap collapsed to 0.003 (`01_design_decisions.md` §7.3). That is a feature for training stability and a limitation for interpretation — a small gap here indicates the model is not overfitting the clip format, not that it generalizes to a new machine. Only the held-out test fold measures that.
 
 ---
 
 *Resolved in session, 2026-08-01, while setting up the WSL2/PyTorch environment and running the first real inventory checks against the ToyCar dataset on disk.*
+
+## 10. Threshold Calibration Is Population-Mismatched Under LOSO — A Real Deployment Finding
+
+**Discovery context:** Identified while testing score fusion (`findings/130 §10.1`), though the implications extend far beyond fusion itself.
+
+**Core mechanism:** Z-score calibration constants are computed exclusively on validation normals from the training cases, whereas test clips originate from an unseen machine. Consequently:
+- Every held-out clip resides far from the training centroid.
+- Calibration constants fail to map scores onto a comparable scale.
+- **Symptom that exposed the issue:** On `case4`, `z_max(euclidean, mahalanobis)` should have rescued the two clips suppressed by Mahalanobis (as Euclidean ranked them highest); instead, it replicated the Mahalanobis ranking identically.
+- **Rank fusion caveat:** While rank fusion is scale-free and immune to this shift, it is transductive and cannot operate per-clip on an MCU.
+
+**Broad impact across threshold methods:** This discrepancy applies to every thresholding method in **§6**, not merely fusion. Any deployed threshold calibrated on normals from other machines will be systematically miscalibrated on the target machine. This provides empirical confirmation for the open question raised in master doc **§9.1** (*"does the threshold need to be per-machine-calibrated?"*).
+
+**Reporting requirements:**
+- When reporting the percentile and chi-square thresholds from **§6**, explicitly state that they are calibrated on training-case normals.
+- Note that a real-world deployment would instead calibrate against normal operating audio collected directly from the installed unit post-installation.
+- Frame the LOSO operating points as expectedly pessimistic: this represents a meaningful finding regarding domain transferability, not an experimental flaw in the protocol.

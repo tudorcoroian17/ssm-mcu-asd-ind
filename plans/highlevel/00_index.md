@@ -21,12 +21,13 @@
 |---|---|---|
 | `00_index.md` | this file — environment, session protocol, amendments to master, open items | every session |
 | `01_design_decisions.md` | the training objective and why it is what it is | every session (short) |
-| `phase_1_gpu_prototype.md` | scaffold, dataset, log-mel, SSM core, training, head, diagnostics | Phase 1 |
-| `phase_2_ablation_and_loso.md` | nested validation, ablation sweep, LOSO folds, run-count budget | Phase 2 |
-| `phase_3_mcu_feature_pipeline.md` | CMSIS-DSP log-mel + stats, parity harness, per-board costs | Phase 3 (parallel) |
-| `phase_4_backbone_port.md` | conditional skeleton — C port, fp32 first | Phase 4 |
-| `phase_5_quantization_and_head.md` | conditional skeleton — the novel engineering result | Phase 5 |
-| `phase_6_results_and_writeup.md` | conditional skeleton — three-way table, framing | Phase 6 |
+| `01_eval_spec.md` | data split, balancing, metrics, threshold methods | every session (short) |
+| `02_phase_1_gpu_prototype.md` | scaffold, dataset, log-mel, SSM core, training, head, diagnostics | Phase 1 |
+| `03_phase_2_ablation_and_loso.md` | nested validation, ablation sweep, LOSO folds, run-count budget | Phase 2 |
+| `04_phase_3_mcu_feature_pipeline.md` | CMSIS-DSP log-mel + stats, parity harness, per-board costs | Phase 3 (parallel) |
+| `05_phase_4_backbone_port.md` | conditional skeleton — C port, fp32 first | Phase 4 |
+| `06_phase_5_quantization_and_head.md` | conditional skeleton — the novel engineering result | Phase 5 |
+| `07_phase_6_results_and_writeup.md` | conditional skeleton — three-way table, framing | Phase 6 |
 | `99_glossary.md` | living glossary — **add to it as we go** | whenever a term is unfamiliar |
 
 ---
@@ -75,6 +76,8 @@ Propagate these back into `00_master_file.md` so the two do not drift.
    `01_design_decisions.md` §7 for the contamination finding, the decisive IND-only experiment,
    and the tradeoffs accepted. `manifest.csv`, `configs/default.yaml`, and the fold function all
    need rebuilding for this project; none survive the port from `ssm-mcu-asd`.
+7. **Run ID excludes the seed, deliberately.** Phase 1 §1.0 specified "run ID = hash of config + seed." `runs/compute_hash.py:train_config_hash()` hashes `held_out_case`, `training`, `features`, and `model` only. Seed is deliberately excluded: seed is not an ablation axis, and the project has settled on seed 158 as the single working seed. The three-seed sweep that resolved fold difficulty (`findings/130` §8) was archived by hand to `archive/SEED_{42,158,824}/` before each subsequent run. **If a future phase ever varies seed programmatically, add** `'seed': cfg['seed']` to train_config_hash first — without it, runs at different seeds collide on the same directory name and silently overwrite.
+8. **Master doc Section 2 and Section 17 item 12 corrected**. The DCASE SSM paper's anomaly head fuses across encoder depth, not reconstruction-versus-latent-distance, and its training regime is two-stage supervised rather than self-supervised. The correction was made in the predecessor project and did not carry into this one; re-applied here. See master doc Section 2.
 
 ---
 
@@ -91,20 +94,17 @@ Continuing master doc Section 17's numbering.
 | 13 | Backbone training objective | **RESOLVED** — `01_design_decisions.md` |
 | 14 | GPU autoencoder baseline | **RESOLVED: deferred to Phase 6.** Consequence recorded in `phase_1_gpu_prototype.md` §1.8 |
 | 15 | Board availability | **open — needs your answer.** Affects Phase 3 ordering |
-| 16 | Per-run wall-clock time | open; resolves at Phase 1 exit gate. Decides whether Phase 2's nested design is affordable |
-| 17 | Pooling choice | provisionally mean pooling (Euclidean, AUC=0.9257 on IND-only held-out-1) — needs a Mahalanobis re-run on IND before treating as settled; see 01_design_decisions.md §7.3 |
-| 18 | State utilisation | open; if all three diagnostics say the state is inert, the master doc's Section 1 headline claim needs rethinking *before* the sweep runs |
+| 16 | Per-run wall-clock time | **RESOLVED**. ~80 s/epoch; 40 ± 10 epochs/fold on 3 cases (3,240 clips). ~53 min/fold typical, ~77 min worst observed (case3, 58 epochs). GTX 1660 Ti, no queue. Phase 2 arithmetic in `03_phase_2` §2.2 |
+| 17 | Pooling choice | **RESOLVED**: **`mean` pooling**. Confirmed across three seeds and four folds (`findings/130` §2). `max` is unstable on case1 (std 0.104–0.134 across seeds); `concat_mean_last` produces ill-conditioned covariance in every fold at every seed and is disqualified for Mahalanobis. Distance head: `knn_clustered_16` for deployment (4 KB, mean AUC 0.9599), `knn_full` as accuracy upper bound (810 KB, 0.9770) |
+| 18 | State utilisation | **RESOLVED, decisively**. Both diagnostics run on all four IND folds. Zeroing the recurrent state drives skill from ~+0.54 to ~−2.5, i.e. far worse than the persistence baseline — the model actively depends on the recurrence. Decay half-lives reach 0.3–15 s at every layer, well past the conv's 128 ms window. Master doc Section 1's state-dimension lever is real. Artifacts: `runs/case{N}/<hash>/{zero_state.csv, decay_half_life.csv, half_life_histogram.png}` |
 
 ---
 
 ## Immediate next action
 
-**Rebuild the data path for IND-only.** Nothing here needs the GPU. In order: (1) build
-`manifest.csv` for this project scoped to IND clips only (cross-check `ssm-mcu-asd`'s
-manifest-building script for the filename-parsing logic, still valid), (2) port
-`get_fold_ind_only()` and `compute_normalization_stats_ind()` from the prior project's
-exploration — drafted, not yet transcribed anywhere — as *the* fold/stats functions here, no
-"ind_only" naming needed since there's no CNT variant to distinguish from, (3) recompute
-`mse_persistence`/`mse_climatology` fresh on this project's IND pool before trusting any
-inherited number — the 0.071 ratio in §7.3 came from a single held-out-1 run in the old project
-and should be treated as a prior, not a given.
+**Phase 1 is complete**. All eight exit-gate items in 02_phase_1_gpu_prototype.md §1.10 pass, and the handoff manifest is materialised under runs/case{N}/<hash>/. Two Phase 1 items were deliberately deferred rather than dropped, and both are Phase 2 prerequisites:
+
+- **`ranges.json`** — per-tensor activation min/max/percentiles, Phase 1 §1.5. Not yet implemented; train.py still has ranges = {} with a TODO. Phase 5 cannot diagnose quantization failures without it, and every checkpoint trained before it exists has no range record.
+- **Threshold methods and secondary metrics** — src/eval/thresholds.py, per 01_eval_spec.md §6. In progress.
+
+Phase 2's first action is 03_phase_2_ablation_and_loso.md §2.3 step 1: the selective-versus-fixed axis, since it reshapes the entire second half of the project.

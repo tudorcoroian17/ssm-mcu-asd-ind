@@ -30,13 +30,19 @@ smoothly across 49 epochs, confirming that the `val_mse` instability documented 
 Scripts used:
 
 | Script | Purpose |
-|---|---|
-| `checks/metrics/eval_auc_pauc.py` | Pooling × distance-head sweep, 27 charts per case |
+| :--- | :--- |
+| `src/eval/embeddings.py` | Per-fold embedding generation and persistence, all pooling modes |
+| `src/eval/auc_pauc.py` | Pooling $\times$ distance-head sweep, 27 charts per case |
+| `src/eval/footprint.py` | Flash and streaming-RAM footprint estimate |
 | `checks/metrics/onset_tail_contribution.py` | Protocol-memorization diagnostic |
-| `checks/metrics/coefficient_of_variation.py` | Score and raw-feature dispersion per case |
+| `checks/smoke/coefficient_of_variation.py` | Score and raw-feature dispersion per case |
 | `checks/smoke/embedding_saturation.py` | Embedding geometry of extreme-scoring clips |
+| `checks/smoke/decay_half_life.py`, `checks/smoke/zero_state.py` | State-utilisation diagnostics |
 | `checks/metrics/misranked_clips.py` | Anomalies ranked below normal clips, by fault code |
 | `checks/metrics/score_fusion.py` | Pairwise fusion of distance heads |
+| `checks/metrics/reference_set_ablation.py` | Train vs. validation-normal vs. combined reference sets |
+
+Note on script paths. The evaluation code was restructured after most of this document's results were produced: checks/metrics/eval_auc_pauc.py became src/eval/auc_pauc.py, with embedding generation split into src/eval/embeddings.py. Results are unaffected — the numerical paths are identical — but the six checks/ scripts above still import get_embeddings from its old location and load checkpoints from the pre-restructure flat path. They must be repaired before any re-run.
 
 ---
 
@@ -456,27 +462,20 @@ an accuracy upper bound.
 
 ### Script defects to fix
 
-- **`train.py` checkpoint naming omits the seed.** `config_hash(local_configs)` hashes
-  `held_out_case`, `training`, `features`, and `model`, but `cfg['seed']` is a top-level key.
-  All seeds write to the same filename and overwrite each other. Fix: add `'seed': cfg['seed']`
-  to `local_configs`.
-- **`misranked_clips.py` summary line is meaningless.** "Buried under ALL four heads" intersects
-  across heads, and since Euclidean often buries zero clips, the intersection is empty by
-  construction. It printed `(none)` for every case while the real signal sat in the per-head
-  lists. The useful intersection is across seeds within a head.
-- **k-means is not deterministic across processes.** `knn_clustered_16` gives different AUCs for
-  the same seed between scripts (case2 seed 42: 0.9896 in `eval_auc_pauc`, 0.9862 in
-  `score_fusion`). Both pass the same `random_state` and `train_emb`, so this is threaded
-  reduction inside sklearn. The effect is ±0.004, the same magnitude as the fusion differences
-  being compared. Fix: set `OMP_NUM_THREADS=1` for eval runs, or persist the k-means centers.
-  This confirms the seed-sensitivity item left open in
-  `120_evaluation_of_pooling_methods.md` §7.
+- **`train.py` checkpoint naming omits the seed. CLOSED** — will not fix, by decision. Seed is not an ablation axis for this project and the working seed is fixed at 158. The three-seed sweep in this document was archived by hand to archive/SEED_{42,158,824}/ between runs. The hazard remains latent: if a future phase varies seed programmatically without first adding 'seed': cfg['seed'] to train_config_hash, runs will collide silently. Recorded in 00_index.md amendment 7.
+* **`src/eval/embeddings.py` set `model.pooling_mode` instead of `model.pooling` (FIXED):**
+  * `SSMBackbone._pool()` reads `self.pooling`; the loop was setting an unused attribute, causing every pooling mode to silently fall back to mean-pooled embeddings.
+  * **Symptom:** Identical AUC and pAUC across all three pooling modes in `eval/results.csv`.
+  * **Scope:** Affected only the post-restructure seed-158 artifacts, which have now been regenerated. The pooling comparisons in §2.2 and §2.3 predate the restructure and remain unaffected.
+
+* **`src/eval/footprint.py` double-counted parameters (FIXED):**
+  * Summed `model.parameters()` twice (once as "weights" and once as "biases"), reporting $2\times$ the true Flash footprint (303 KB INT8 instead of ~152 KB).
+  * Omitted the largest transient tensors from peak-RAM estimation because `_scan()` and `discretize()` are implemented as plain methods rather than `nn.Module` boundaries.
+  * **Resolution:** Replaced with an analytical streaming-execution estimate. The ~156 KB INT8 figure cited in §11 was derived independently via `helpers/vis_inspect_model.py` and was always correct.
 
 ### Suggested improvement
 
-- **Persist embeddings, not just scores.** Saving `train_emb`, `test_emb`, `calib_emb`, labels,
-  and paths per fold per pooling mode makes all downstream analysis pure NumPy and removes the
-  need to reload the model. About 830 KB per fold. Include the seed in the filename.
+- Persist embeddings, not just scores. DONE. src/eval/embeddings.py now persists train, validation-normal, validation-anomaly, and test embeddings plus labels and normalization stats, per fold per pooling mode, to runs/case{N}/<hash>/embeddings/emb_<pooling>.npz, with a manifest.csv recording which pool each clip belongs to. Scores are persisted separately to scores/. All downstream analysis is now pure NumPy with no model reload.
 
 ### Questions still open
 

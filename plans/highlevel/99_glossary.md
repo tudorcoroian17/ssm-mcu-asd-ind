@@ -63,4 +63,29 @@
 
 ## Terms to add as we go
 
-*(append here — date and the phase you met them in)*
+> Added Phase 1 close-out, August 2026.
+
+### Evaluation and Validation
+
+* **Zero-state ablation:** A diagnostic that discards the recurrent state $h$ after every timestep, leaving only the convolution path and skip connection. If skill barely changes, the state was inert. Here it collapses skill from $+0.54$ to $-2.5$, proving the opposite.
+* **Coefficient of variation (cv):** Standard deviation divided by the mean. Used to compare dispersion across folds whose absolute scales differ.
+* **Condition number:** The ratio of a matrix's largest to smallest singular value. For a covariance matrix, a high value (here, $> 10^6$) indicates near-singularity and an untrustworthy inverse — which disqualified `concat_mean_last` from Mahalanobis scoring.
+* **Buried clip:** An anomaly ranked below every normal clip in the test set. With 265 clips per class, each buried clip costs exactly $1/265 \approx 0.0038$ of AUC — the quantization behind several repeated AUC values.
+* **Discordant pair:** A $(\text{normal}, \text{anomaly})$ pair the scorer ranks the wrong way round. $(1 - \text{AUC}) \times n_{\text{pos}} \times n_{\text{neg}}$ yields the total count; dividing by $n_{\text{neg}}$ recovers the buried-clip count.
+* **Reference set:** The population of normal embeddings a distance head scores against. The default here is training embeddings; validation normals and their union were tested as alternatives.
+* 🔴 **Rank fusion vs. z-score fusion:** Combining two heads' scores by averaging their ranks within the test set (scale-free, but transductive and impossible per-clip on an MCU) versus standardizing each against calibration constants (deployable, but breaks when the calibration population differs from the test machine).
+* **Threshold methods:**
+  * **Percentile:** Derived from validation normals (unsupervised, primary).
+  * **Chi-square:** Analytic formulation (Mahalanobis only, cross-check).
+  * **Labelled-anomaly-calibrated:** Empirical upper bound; leverages label information a deployment would not possess.
+* **Clustered $k\text{NN}$ references:** Training embeddings compressed to $k$ representative points via $k$-means, allowing the head to store $16 \times d_{\text{model}}$ floats instead of the entire training set (here: 4 KB vs. 810 KB, at a cost of 0.017 mean AUC).
+
+---
+
+### Deployment
+
+* **Streaming peak RAM:** The memory an MCU requires when processing one frame at a time: persistent recurrent state and convolution history across all layers, plus transient per-timestep scratch memory. Distinct from what a GPU-parallel PyTorch trace reports, which materializes the entire $(T, d_{\text{inner}}, d_{\text{state}})$ tensor for throughput and does not reflect deployed execution.
+* **Flash versus RAM footprint:**
+  * **Flash:** Stores model weights (fixed, quantizable).
+  * **RAM:** Stores state and activations (per-inference).
+  * *Context:* For this project, flash represents the more binding constraint on the leanest target board, whereas RAM is directly driven by the SSM recurrence.

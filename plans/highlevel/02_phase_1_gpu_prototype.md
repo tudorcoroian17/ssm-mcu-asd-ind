@@ -3,6 +3,7 @@
 **Prerequisites:** `00_index.md`, `01_design_decisions.md`, dataset on disk.
 **Goal:** one reproducible number — full-precision, unconstrained SSM + Option 3 head AUC on ToyCar. This is cell (3) of the master doc Section 12 three-way comparison. Section 12 commits to GPU-first so this number exists before any embedded work starts.
 **Can share a session with Phase 2** (master doc Section 18: both are sequential GPU work).
+**Status: COMPLETE.** All eight exit-gate items (§1.10) pass. Two items were deliberately deferred to Phase 2 and are flagged inline: ranges.json (§1.5) and the threshold methods (§1.7). The open questions posed throughout this document are answered in the § notes below; the answers live in findings/130_evaluation_of_default_model_across_folds.md.
 
 ---
 
@@ -12,17 +13,42 @@ Master doc Section 13 commits to **one-at-a-time ablation from a single default 
 
 ```
 src/
-  data/     inventory.py, folds.py, dataset.py
+  data/     inventory.py, folds.py
   features/ logmel.py, stats.py, cache.py, baselines.py
   models/   ssm_block.py, backbone.py, heads.py
-  eval/     metrics.py, thresholds.py, diagnostics.py
+  eval/     embeddings.py, auc_pauc.py, footprint.py, thresholds.py
   train.py
-configs/    default.yaml
-runs/       <run_id>/{config.yaml, metrics.json, embeddings.npy, ckpt.pt, ranges.json}
+checks/
+  integrity/ parity.py, stability.py, emb_score_analysis.py
+  smoke/     decay_half_life.py, zero_state.py, coefficient_of_variation.py,
+             embedding_saturation.py
+  metrics/   onset_tail_contribution.py, misranked_clips.py,
+             score_fusion.py, reference_set_ablation.py
+helpers/    reference_scan.py, vis_inspect_model.py, extract_mel_filterbank.py
+configs/    default.yaml, mel_filterbank.npy, all_folds_normalisation_stats.json
+runs/
+  compute_hash.py
+  baselines/toycar_all_folds_k2_baselines.json
+  case{N}/<config_hash>/
+    ckpt.pt, ckpt_descriptor.json
+    embeddings/{emb_<pooling>.npz, manifest.csv}
+    scores/scores_<pooling>_<head>.npz
+    eval/{results.json, results.csv, *.png}
+    analysis/analysis_<pooling>_<head>.png
+    decay_half_life.csv, half_life_histogram.png, zero_state.csv, footprint.csv
+archive/SEED_{42,158,824}/case{N}/
 ```
 
+**Deviations from the Original Scaffold (Deliberate)**
+
+- `dataset.py` was never needed — `ClipDataset` is six lines inside `train.py`.
+- `eval/metrics.py` and `eval/diagnostics.py` became `eval/auc_pauc.py` and the `checks/` tree.
+- **Run directory structure:** `case{N}/<config_hash>/` rather than a flat `<run_id>/`, allowing folds to group visibly. `config.yaml` is not copied in; `ckpt_descriptor.json` embeds the configuration verbatim instead, serving the same purpose with one fewer file.
+- **Embeddings format:** `embeddings.npy` became `embeddings/emb_<pooling>.npz`, holding `train`, `val-normal`, `val-anomaly`, and `test` embeddings alongside labels and normalization statistics. This enables all downstream analysis to remain pure NumPy without requiring model reloads.
+- `ranges.json` is not yet produced (see §1.5).
 - Single dataclass, serialized into every run directory verbatim.
-- Run ID = hash of config + seed. Two runs with the same hash must produce identical metrics — fix nondeterminism **now**, not during the ablation.
+- **Run ID = hash of config, seed deliberately excluded**. runs/compute_hash.py:train_config_hash() hashes held_out_case, training, features, and model. Seed is not an ablation axis for this project and the working seed is fixed at 158. The three-seed sweep was archived by hand to archive/SEED_*/ between runs. See 00_index.md amendment 7 for the hazard this creates if a future phase varies seed programmatically.
+- **Reproducibility verified**. Same config and seed reproduces train and val skill to within 0.001. Exit gate item 2.
 - Seed `torch`, `numpy`, `random`; set `torch.backends.cudnn.deterministic`.
 
 Phase 2 runs 300+ configurations. Results that cannot be traced to an exact config are worthless, and re-running to find out is expensive.
@@ -214,6 +240,8 @@ The prediction head **cannot** attach to the pooled embedding: pooling collapses
 
 **Question before you pick:** the anomaly is a bearing/motor defect present throughout the clip in some cases, and a transient click in others (master doc Section 8.1's "spike/click vs steady hum"). Which pooling preserves a transient, and which averages it into invisibility? Does the answer change for a 10-second clip?
 
+**Answered (findings/130 §2). mean.** The reasoning in the question — that max should preserve transients that mean averages away — turned out to be the wrong frame, because the deciding factor was stability rather than sensitivity. max pooling on case1 varies by 0.10–0.13 AUC standard deviation across three seeds, swinging from 0.9647 down to 0.7123 on the same configuration. A single-seed measurement made it look like case1's best choice; it is not a good configuration that underperformed once, it is unstable. concat_mean_last produces covariance condition numbers of 6.6e6–1.3e8 in every fold at every seed and scores below chance on case2 under Mahalanobis. mean is the only pooling mode that is stable across seeds on all four folds, and it is also the cheapest.
+
 ---
 
 ## 1.5 Training objective — full spec
@@ -255,6 +283,8 @@ Fit on training-fold normal embeddings only. Four variants, ordered by on-device
 
 **Question:** Mahalanobis needs a covariance estimated from your training-fold normal embeddings. How many normal clips per fold, and is that enough to estimate a 64×64 covariance without it being singular? If not — shrinkage (Ledoit-Wolf), a diagonal approximation, or a smaller `d_model`? Note the third also helps Phase 5.
 
+**Answered** (findings/130 §2.4, §13.4). With 3,240 training clips against mean pooling's 64 dimensions, the covariance is well-conditioned — 1.5e4 to 7.5e4 across folds, comfortably below the 1e6 instability threshold. No shrinkage needed. concat_mean_last is a different story: its 128-dimensional embedding pairs two correlated halves derived from the same sequence, and every fold exceeds 1e6 at every seed (6.6e6–1.3e8), with case2 scoring below chance. Recommendation: drop concat_mean_last + mahalanobis from the evaluation grid entirely. Reducing the reference set to validation normals only (810 clips) raises conditioning in all four folds but does not cross the threshold under mean pooling; untested under concat_mean_last.
+
 ---
 
 ## 1.7 Evaluation
@@ -262,6 +292,8 @@ Fit on training-fold normal embeddings only. Four variants, ordered by on-device
 - **AUC and pAUC (p=0.1)** — DCASE convention; master doc Section 9.1 commits to these as headline regardless of thresholding.
 - **Per-case results, never a single averaged number** (Section 14 small-N caveat).
 - Implement all three Section 9.1 threshold methods now: percentile-based (primary), chi-square analytic (cross-check), labeled-anomaly-calibrated (upper bound, flagged in writeup).
+
+Status: AUC and pAUC are implemented (src/eval/auc_pauc.py) and reported per case, never averaged. The three threshold methods and the four secondary metrics are in progress as src/eval/thresholds.py — see 01_eval_spec.md §6 for the reporting contract and §10 for the calibration-population caveat that applies to all three. Note that the chi-square method applies to Mahalanobis only; the chi-square derivation is specific to squared Mahalanobis distance and applying it to Euclidean or kNN scores would produce a fabricated number rather than a cross-check.
 
 ---
 
@@ -298,6 +330,22 @@ Half-lives clustered at one or two frames → the model forgets immediately and 
 
 **Run (c) after your first successful training run.** Highest information-per-minute check in the project, and it produces *direct mechanistic evidence* for the lever Section 1 claims exists — a much stronger paper sentence than a correlation across an ablation sweep.
 
+### Result: Both (b) and (c) run on all four IND folds, both pass decisively.
+
+| Case | Skill, real state | Skill, state zeroed | Half-life max, any layer |
+| :---: | :---: | :---: | :---: |
+| **1** | 0.533–0.545 | −2.31 to −2.50 | 296–14,985 ms |
+| **2** | 0.539–0.555 | −2.90 to −3.25 | 692–6,185 ms |
+| **3** | 0.538–0.544 | −2.30 to −2.56 | 710–3,913 ms |
+| **4** | 0.534–0.549 | −2.57 to −2.76 | 626–102,561 ms |
+
+- **Zeroing the state:** Does not merely erase the gain — it drives error to roughly $3.5\times$ the persistence baseline. That is stronger evidence than a null result would have been: the model is not merely helped by the recurrence, it actively depends on it.
+- **Effective memory horizon:** Every layer in every fold shows half-life tails far beyond the convolution's 128 ms reach.
+- **Mechanistic takeaway:** Master doc **§1**'s state-dimension lever is real, providing the exact mechanistic validation required for the paper.
+- **Independent corroboration:** Diagnostic (a), the `d_state` sweep, is still free from Phase 2 axis 1 and will corroborate independently.
+
+**Artifacts:** `checks/smoke/zero_state.py`, `checks/smoke/decay_half_life.py`; outputs stored in each respective run directory.
+
 ---
 
 ## 1.10 Exit gate
@@ -313,15 +361,31 @@ Do not start Phase 2 until **all** of:
 7. **At least one state-utilisation diagnostic passes** (1.9).
 8. **Measured wall-clock for one training run is recorded.** This single number decides whether Phase 2's nested validation is affordable as designed.
 
+### All Eight Pass
+
+- [x] **End-to-end training & metrics:** All four ToyCar folds train end-to-end and produce AUC + pAUC.
+- [x] **Reproducibility:** Same config + seed reproduces train and val skill to within 0.001.
+- [x] **Numerical stability:** `checks/integrity/stability.py` — 12 configurations, bounded state over 1,000 timesteps (beyond the 300 required).
+- [x] **Non-selective mode:** `selective=False` runs cleanly in both `stability.py` and `parity.py`.
+- [x] **Scan parity:** `checks/integrity/parity.py` — $2.3 \times 10^{-10}$ max absolute difference against `selective_scan_ref`, five orders tighter than the $1.7 \times 10^{-5}$ target (Python-to-Python, not cross-language).
+- [x] **Skill convergence:** Train skill 0.540–0.550 across folds; val skill within 0.003 of train.
+- [x] **Mechanistic validation:** Both (b) and (c) pass on all four folds (see §1.9).
+- [x] **Training throughput:** ~80 s/epoch, $40 \pm 10$ epochs/fold (~53 min typical, ~77 min worst) on GTX 1660 Ti.
+
 ---
 
 ## Handoff manifest → Phase 2
 
-- `manifest.csv`, fold definitions
-- frozen `configs/default.yaml`
-- `mel_filterbank.npy` (materialized, not parameters)
-- `baselines.json` — `mse_persistence`, `mse_mean` per machine type per fold
-- working `SSMBlock` with both selectivity branches and both discretizations
-- one complete `runs/` directory as the format template
-- decay-time-constant histogram from 1.9(c)
-- **measured per-run wall-clock time**
+- `manifest.csv` (project root); fold definitions in `src/data/folds.py`
+- Frozen `configs/default.yaml` (seed 158)
+- `configs/mel_filterbank.npy` — materialized, not parameters
+- `runs/baselines/toycar_all_folds_k2_baselines.json` — `mse_persistence`, `mse_climatology` per fold
+- Working `SSMBlock` with both selectivity branches and both discretizations, parity- and stability-checked
+- `runs/case1/4f3ffab6e66e/` as the run-directory format template
+- **Decay-time-constant histograms:** `runs/case{N}/<hash>/half_life_histogram.png`, plus `decay_half_life.csv`
+- **Measured per-run wall-clock:** ~53 min/fold (§1.10 item 8)
+- **Additional (beyond the original manifest):**
+  - Persisted embeddings and scores per pooling $\times$ head
+  - Memory-footprint estimate (`footprint.csv`)
+  - Three-seed archive under `archive/SEED_*/`
+- **Missing:** `ranges.json` (§1.5), threshold-method outputs (§1.7)

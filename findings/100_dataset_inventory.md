@@ -1,4 +1,9 @@
 # Phase 1. GPU Prototype
+
+Scope: CNT era. Produced before the IND-only restart (01_design_decisions.md §7). Retained as record. The findings are correct for the pipeline they describe, but that pipeline is not this project's — see the per-file note below.
+
+The IND clip counts in the first table remain current and are restated in 101_dataset_inventory_ind_only.md. The CNT rows, the silence-contamination table, and the fold window-survival table describe a data source no longer used.
+
 ## Section 1.1 Dataset Inventory
 
 Answers for the verification gate:

@@ -52,13 +52,13 @@ Three axes were available. Two are adopted.
 
 ---
 
-## 4. Consequence — the fusion gap becomes an asset
+## 4. Consequence — Consequence — a free reconstruction score, but not the gap-closer it was framed as
 
-Master doc Section 17 item 12 worries that Option 3 is latent-distance-only while the published DCASE head fuses reconstruction + latent scores, and that any accuracy gap would need apologising for.
+**Correction (applied after reading the DCASE SSM paper directly; see master doc Section 2)**. This section originally argued that master doc Section 17 item 12's "fusion gap" was converted into an asset, on the premise that the published head fuses S_recon with S_latent while this project's Option 3 uses latent distance only. That premise was wrong. The published head has no reconstruction pathway at all — it fuses across encoder depth, not across score type. There is no fusion gap of the described kind, so there is nothing for the prediction head to close.
 
-But **per-frame prediction error *is* an autoregressive reconstruction score.** You now get `S_recon` essentially free, from a head you are training anyway, at a fraction of Option 1's cost — no mirrored SSM decoder, no second pass over the sequence.
+**What survives, and it is still worth having**. Per-frame prediction error is an autoregressive reconstruction score. The prediction head is trained regardless, so S_recon comes essentially free — no mirrored SSM decoder, no second pass over the sequence, at a fraction of Option 1's cost. Distance-only versus fused S_total = α·Norm(S_recon) + (1−α)·Norm(S_latent) therefore remains a legitimate, cheap ablation with a measurable on-device memory cost. It is simply an ablation on its own merits, not an answer to a published-work gap. Scope stays in Phase 5.
 
-This converts item 12 from an apology into an **ablation**: distance-only vs. fused `S_total = α·Norm(S_recon) + (1−α)·Norm(S_latent)`, with the on-device memory cost of each measured. Scope added to Phase 5.
+**Prior evidence on fusion, from within this project**. Fusing two distance heads was tested directly and did not help (findings/130 §10): no pairwise fusion beat plain knn_full at both seeds tested, because the residual error is a handful of specific clips and the 1/265-per-clip ceiling is smaller than the ranking damage fusion causes. That result concerns distance-head fusion, not S_recon fusion, so it does not pre-empt the Phase 5 ablation — but it does lower the prior on fusion helping, and §10.1's calibration-population finding applies to any score combination that needs the two components on a comparable scale.
 
 ---
 
@@ -180,7 +180,7 @@ decision was made:
 
 **Re-running mean+Mahalanobis on an IND-only fold is still an open item** — the table above is
 Euclidean-only, so it likely *understates* IND-only's ceiling rather than overstates it, but it
-hasn't been measured.
+hasn't been measured. **RESOLVED**. Mean + Mahalanobis has since been run on all four IND folds at three seeds (findings/130 §2.1). It averages 0.9525 AUC across folds and seeds — better than Euclidean (0.9323), worse than both kNN variants (knn_clustered_16 0.9599, knn_full 0.9770). The Euclidean-only table above did understate IND-only's ceiling, as suspected, but the winning head turned out to be neither of the two compared here. The CNT-era recommendation of mean + Mahalanobis (findings/120 §5) does not carry over to IND; see findings/130 §11 for the current deployment recommendation.
 
 ### 7.4 The tradeoff, stated honestly
 
@@ -194,7 +194,7 @@ hasn't been measured.
   frame 330" rather than the engine itself — the same failure family as the persistence
   baseline in §3, just at a coarser timescale. Nothing has ruled this out yet; worth an
   explicit diagnostic once this project has its own trained checkpoint (e.g. check whether
-  embeddings still separate normal/anomaly when onset/offset frames are masked out).
+  embeddings still separate normal/anomaly when onset/offset frames are masked out). **RESOLVED** — no memorization. The diagnostic proposed here was implemented as checks/metrics/onset_tail_contribution.py and run on all four folds (findings/130 §4). Scoring on the middle region alone, with both silence brackets removed, matches or exceeds full-clip AUC in every fold — for case2 it improves from 0.8707 to 0.9843. If the model depended on clip timing, removing that timing would hurt. It does not. The onset_only scores remain non-trivial in three folds, consistent with motor startup transients carrying genuine fault-correlated information — a second source of real signal, not a leak. One unexplained residual: tail_only inverts in three of four folds; low-impact (25 of 344 frames) and logged as open in findings/130 §12.
 
 ### 7.5 What carries over unchanged, and what doesn't
 
@@ -213,3 +213,21 @@ project's pipeline.
 `compute_normalization_stats_ind()`-style stats function (plain two-pass Welford, no filtering,
 since every IND frame is real signal by construction). Both were fully drafted in the prior
 project's exploration session and are ready to hand over for transcription when we get to that step.
+
+---
+
+## 8. Phase 1 outcomes that revise earlier assumptions
+
+Three things settled during Phase 1 that change how earlier sections should be read.
+
+### 8.1 Plain Adam is confirmed sufficient, permanently. 
+
+§7.2 hedged that AdamW, gradient clipping, and ReduceLROnPlateau "should be re-applied regardless" of CNT versus IND, then walked it back to "start with defaults." The defaults are correct and the hedge should be retired: sixteen training runs (four folds × three seeds, plus a reproducibility re-run) all descended smoothly with no oscillation. The CNT-era val_mse instability does not reproduce on IND. Do not add optimizer machinery to Phase 2 without a fresh, specific reason.
+
+### 8.2 The prediction target is fixed at residual, without a pilot. 
+
+Phase 1 §1.5 called for a cheap pilot comparing residual against absolute target before the ablation. It was not run, and the training.target config key has been removed rather than left dead — compute_loss() hardcodes the residual form. The justification is §3's: with the residual target, the persistence solution becomes "output all zeros" and earns no credit, which is a structural argument rather than an empirical one. Recording the decision here so a reader does not go looking for pilot data that does not exist. If Phase 2 has budget to spare, the pilot is still cheap; it is not a blocker.
+
+### 8.3 Loudness confounding survived the data rebuild and is now a dataset-level property. 
+
+findings/130 §7.3 measures score-versus-clip-RMS correlation between +0.13 and +0.96 across twelve fold-seed combinations under mean pooling with Euclidean distance, reproducing the CNT-era PC1-loudness finding in findings/120 §1. An earlier claim that lower loudness dependence predicts higher AUC did not survive multi-seed testing and has been retracted. What does hold (§7.4) is narrower and mechanistic: when the detector latches onto loudness, loud normal clips enter the top ranks and pAUC specifically falls, because pAUC integrates only the low-false-positive region. Treat this as a known characteristic of Euclidean scoring on this dataset, not as a per-fold diagnostic.

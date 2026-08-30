@@ -1,6 +1,6 @@
 # Phase 2 — Ablation + LOSO Harness
 
-**Prerequisites:** Phase 1 handoff manifest, materialised. In particular the **measured per-run wall-clock time** — §2.2's run-count arithmetic is undecidable without it.
+**Prerequisites**: Phase 1 handoff manifest, materialised — available, see 02_phase_1_gpu_prototype.md. Per-run wall-clock resolved at ~53 min/fold, which makes §2.2's arithmetic decidable. One Phase 1 leftover is a hard prerequisite: ranges.json. Phase 2 produces the winning checkpoint that Phase 4 ports and Phase 5 quantizes; if range logging is not in train.py before the sweep runs, 172 runs' worth of activation statistics are lost and the winning config needs a re-run to recover them.
 **Goal:** resolve the master doc Section 1 placeholders (`[X]%`, `[selective / fixed-parameter]`, `[selectivity / state dimension]`) and produce both LOSO variants.
 **Can share a session with Phase 1** (master doc Section 18).
 
@@ -55,12 +55,17 @@ The inner held-out case's anomalies are used for **config selection**, never for
 | **default** | — | 1 |
 | **total configs** | | **14** |
 
-Per outer fold: 14 configs × 3 inner folds = 42, plus 1 refit = **43 runs**.
-× 4 outer folds × **1 machine type (ToyCar)** = **172 runs**.
+Per outer fold: 14 configs × 3 inner folds = 42, plus 1 refit = 43 runs.
+× 4 outer folds × 1 machine type (ToyCar) = 172 runs.
 
-At 10 min/run ≈ **28.7 hours**. At 45 min/run ≈ **5.4 days**.
+At measured Phase 1 wall-clock (~80 s/epoch on 3 cases / 3,240 clips, 40 ± 10 epochs): inner-fold runs train on 2 cases (~2,160 clips) at roughly 53 s/epoch ≈ 36 min/run; the refit trains on 3 cases ≈ 53 min/run.
 
-(Previously budgeted at 344 runs / 2 machine types, before ToyTrain was deferred per `01_design_decisions.md` §6. Re-add ToyTrain's 172 runs, plus cross-type folds, once that deferral lifts — do not assume the doubled figure until then.)
+Full nested design: (42 × 36 min) + 53 min = 26.1 h per outer fold × 4 = ~104 h ≈ 4.3 days.
+With mitigation 1: (14 × 36 min) + 53 min = 9.3 h per outer fold × 4 = ~37 h ≈ 1.5 days.
+
+Two caveats on these figures. First, per-run time varies with the ablated axis — d_state=64 and the full-depth configs run slower than d_state=8 or L−2, so treat this as a central estimate rather than a bound. Second, the wall-clock is single-GPU with no queue (GTX 1660 Ti, 6 GB), so it is elapsed time you must actually sit through.
+
+Recommendation: apply mitigation 1 from the outset. 4.3 days of uninterrupted single-GPU time is fragile — one crash, one config bug found on day three, and the whole budget is gone. 1.5 days is recoverable. Mitigation 1 costs the least methodological ground of any option on the ladder.
 
 ### Mitigation ladder — apply in this order
 
@@ -72,23 +77,13 @@ At 10 min/run ≈ **28.7 hours**. At 45 min/run ≈ **5.4 days**.
 
 **Do not** mitigate by dropping nested validation — master doc Section 13 already identified that as leakage.
 
-### Mitigation ladder — apply in this order
-
-1. **Single fixed inner split** instead of 3 inner folds → 14 + 1 = 15 per outer fold → **120 runs**. Best value; costs the least methodological ground.
-2. Full sweep on **cross-type only**; within-type at default config only.
-3. Drop `k=1` — it is the known-degenerate setting and arguably belongs in the Phase 1 pilot, not the sweep → 13 configs.
-4. Drop N=8, or the depth axis — least load-bearing for the Section 1 claim.
-5. Subsample training clips per fold.
-
-**Do not** mitigate by dropping nested validation. Master doc Section 13 already identified that as leakage.
-
 ---
 
 ## 2.3 Execution order
 
 **1. Axis 2 (selective vs fixed) first.** Master doc Section 13 says it *"could justify the paper on its own,"* and it determines whether Phase 4 ports a data-dependent recurrence (hard — the Section 11 point 1 problem) or a static one (much easier to quantize). A cheap early answer reshapes the entire second half of the project.
 
-**2. Axis 1 (state dimension).** The other half of Section 1's `[selectivity / state dimension]` placeholder — and simultaneously diagnostic (a) from Phase 1 §1.9.
+**2. Axis 1 (state dimension).** The other half of Section 1's `[selectivity / state dimension]` placeholder — and simultaneously diagnostic (a) from Phase 1 §1.9. Note that this axis now has a prior: 01_design_decisions.md §8 / Phase 1 §1.9 already established that the recurrent state is load-bearing (zeroing it costs ~3 full skill points). If the d_state sweep comes back flat across N ∈ {8, 16, 32, 64} despite that, the two results are in tension and the tension is itself worth investigating — most likely explanation would be that even N=8 is sufficient capacity, which is a good deployment result and should be reported as one rather than treated as a null.
 
 **3. Horizon axis.** Cheap, and tells you whether the whole training objective is well-posed.
 
@@ -99,7 +94,6 @@ Everything else after.
 ## 2.4 Reporting
 
 - **Per-fold table, mean ± std.** Never a bare mean — master doc Section 14's small-N caveat says per-fold variance is itself informative.
-- **Both LOSO variants reported separately** (Section 14, committed). "Generalizes across units but fails across types" and "generalizes across both" are different findings. - OUTDATED
 - **Within-type reported now; cross-type deferred.** Master doc Section 14's commitment to reporting both variants still holds — but only within-type (ToyCar) is in scope for this pass. The "generalizes across units vs. across types" comparison isn't answerable until ToyTrain LOSO exists, later, per `01_design_decisions.md` §6.
 - **Skill score alongside AUC for every run.** A config with high AUC and near-zero skill is suspicious — investigate before it goes in a table.
 - Resolve the Section 1 placeholders.
@@ -108,11 +102,10 @@ Everything else after.
 
 ## Exit gate
 
-1. Both LOSO variants complete, per-fold numbers recorded. - OUTDATED
-2. **Within-type LOSO (ToyCar) complete**, per-fold numbers recorded. Cross-type LOSO is out of scope for this exit gate — deferred per `01_design_decisions.md` §6, to be re-checked once ToyTrain is brought in post-MCU-deployment.
-3. Section 1 placeholders resolvable from the data — you can state which lever the evidence supports.
-4. A winning config identified through the nested procedure, not by eyeballing outer-fold results.
-5. `parity_vectors.npz` generated *before* the training environment is torn down.
+1. **Within-type LOSO (ToyCar) complete**, per-fold numbers recorded. Cross-type LOSO is out of scope for this exit gate — deferred per `01_design_decisions.md` §6, to be re-checked once ToyTrain is brought in post-MCU-deployment.
+2. Section 1 placeholders resolvable from the data — you can state which lever the evidence supports.
+3. A winning config identified through the nested procedure, not by eyeballing outer-fold results.
+4. `parity_vectors.npz` generated *before* the training environment is torn down.
 
 ---
 

@@ -5,6 +5,10 @@
 `fold_norm_stats.json` on silence-filtered CNT training data (see `01_eval_spec.md`
 and the raw-waveform silence-filtering work).
 
+Scope: CNT era. Produced before the IND-only restart (01_design_decisions.md §7). Retained as record. The findings are correct for the pipeline they describe, but that pipeline is not this project's — see the per-file note below.
+
+The normalization-artifact mechanism generalizes and still matters — see 01_eval_spec.md §7. The specific 3.1× spread does not reproduce under IND, where per-fold mse_persistence ratios sit within 0.0666–0.0756 (runs/baselines/toycar_all_folds_k2_baselines.json). The §5 "not yet done" items are now done: both cross-references were added to 01_eval_spec.md §7.
+
 ---
 
 ## 1. The observation that triggered this

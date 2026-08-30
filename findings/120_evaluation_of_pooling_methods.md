@@ -10,6 +10,10 @@ default, based on a Euclidean-distance-only comparison. A follow-up test with Ma
 distance overturned that recommendation. The full picture — three distance/scoring methods,
 all three pooling modes — is below.
 
+Scope: CNT era. Produced before the IND-only restart (01_design_decisions.md §7). Retained as record. The findings are correct for the pipeline they describe, but that pipeline is not this project's — see the per-file note below.
+
+Superseded by findings/130 for all recommendations. Its headline conclusion — mean pooling + Mahalanobis — does not carry to IND, where Mahalanobis places third of four heads (0.9525 mean AUC against knn_clustered_16's 0.9599 and knn_full's 0.9770). What does carry: the mean pooling choice, the loudness-confounding finding (§1, reproduced on IND in findings/130 §7.3), the concat_mean_last conditioning concern (§7, now disqualifying per findings/130 §2.4), and the 16-reference clustering result (§6, now the deployment recommendation). The k-means seed-sensitivity item left open in §7 is resolved and reclassified: it is process-level nondeterminism, not seed sensitivity — see findings/130 §12.
+
 ---
 
 ## 1. Re-establishing the baseline: AUC on the filtered model, mean pooling, Euclidean distance

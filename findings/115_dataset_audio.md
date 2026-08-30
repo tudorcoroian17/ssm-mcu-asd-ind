@@ -136,6 +136,8 @@ the model has *some* exposure to onset/offset shapes. Not implemented; worth a d
 in Phase 2 rather than adjusting `min_frame_fraction` for CNT, which is a different phenomenon
 (see Section 5) and would not create the same exposure.
 
+Superseded by the IND-only restart. This mismatch was real for the CNT pipeline and is now structurally impossible: training, validation, and test all draw from IND clips carrying the same onset/tail bracket. The val_mse instability this section proposed as a contributor does not reproduce on IND (findings/130 §1, sixteen runs with smooth descent). The proposed mitigation — deliberately including transition-spanning training windows — is moot. Retained as record of a correctly-reasoned hypothesis whose premise was removed by a data-source change rather than by being tested.
+
 ---
 
 ## 7. Open item — not reconciled with an earlier, separate finding
@@ -149,3 +151,5 @@ drag a whole-file average below that earlier threshold.
 a genuinely separate defect (e.g., a failed recording), has not been checked.** Worth a direct
 listen/inspection pass on a few of these specific files, same methodology as the CNT silence
 investigation (`110_dataset_fold_stats.md`), before assuming either explanation.
+
+Possible connection worth checking. Case1 is the hardest LOSO fold and the only one with flagged near-silent IND files. findings/130 §9.3 shows case1 fails diffusely — essentially no buried clips but 211–257 anomalies overlapping at least one normal — which is what a contaminated normal pool would look like. Untested, and the 30 files split roughly evenly across normal and anomaly, which argues against a one-sided effect. Cheap to check: exclude them and re-score case1.
