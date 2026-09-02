@@ -1,0 +1,49 @@
+cell,contrast,n_positive,n_pairs,disqualified
+"mean
+euclidean",True vs False,17,36,False
+"mean
+euclidean",euler vs zoh,13,36,False
+"mean
+mahalanobis",True vs False,13,36,False
+"mean
+mahalanobis",euler vs zoh,15,36,False
+"mean
+knn_full",True vs False,19,36,False
+"mean
+knn_full",euler vs zoh,15,36,False
+"mean
+knn_clustered_16",True vs False,19,36,False
+"mean
+knn_clustered_16",euler vs zoh,16,36,False
+"max
+euclidean",True vs False,17,36,False
+"max
+euclidean",euler vs zoh,15,36,False
+"max
+mahalanobis",True vs False,17,36,False
+"max
+mahalanobis",euler vs zoh,17,36,False
+"max
+knn_full",True vs False,18,36,False
+"max
+knn_full",euler vs zoh,16,36,False
+"max
+knn_clustered_16",True vs False,17,36,False
+"max
+knn_clustered_16",euler vs zoh,18,36,False
+"concat_mean_last
+euclidean",True vs False,17,36,False
+"concat_mean_last
+euclidean",euler vs zoh,14,36,False
+"concat_mean_last
+mahalanobis",True vs False,7,36,True
+"concat_mean_last
+mahalanobis",euler vs zoh,15,36,True
+"concat_mean_last
+knn_full",True vs False,17,36,False
+"concat_mean_last
+knn_full",euler vs zoh,14,36,False
+"concat_mean_last
+knn_clustered_16",True vs False,18,36,False
+"concat_mean_last
+knn_clustered_16",euler vs zoh,14,36,False
