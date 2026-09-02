@@ -63,8 +63,14 @@ class TensorCollector:
         out = {}
         for name, chunks in self.tensors.items():
             arr = chunks[0] if len(chunks) == 1 else np.stack(chunks, axis=0)
-            if name.endswith(SUBSAMPLED_SUFFIXES):
-                arr = arr[:, list(SELECTED_TIMESTEPS)]
+            # Subsample the time axis only when there is one. discretize()
+            # records A_bar and B_bar before forward() broadcasts them, so on
+            # the non-selective branch they arrive as (d_inner, d_state) with
+            # no batch or time axis: A_bar is genuinely constant across the
+            # clip. Those are ~16 KB and need no subsampling.
+            if name.endswith(SUBSAMPLED_SUFFIXES) and arr.ndim == 4:
+                keep = [t for t in SELECTED_TIMESTEPS if t < arr.shape[1]]
+                arr = arr[:, keep]
             out[name] = arr
         return out
 

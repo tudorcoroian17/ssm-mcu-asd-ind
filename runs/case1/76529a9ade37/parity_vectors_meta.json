@@ -1,0 +1,333 @@
+{
+    "source_wav": "/mnt/d/Tudor/Master/Disertatie/ToyCar-ToyADMOS-DS/case2/NormalSound_IND/1200010003_ToyCar_case2_normal_IND_ch1_0003.wav",
+    "source_cache": "/home/y/projects/ssm-mcu-asd-ind/cache/f55a011a8ef1/1200010003_ToyCar_case2_normal_IND_ch1_0003.npy",
+    "case_id": 2,
+    "clip_index": 0,
+    "held_out_case": 1,
+    "model_hash": "76529a9ade37",
+    "seed": 158,
+    "model": {
+        "d_conv": 4,
+        "d_model": 64,
+        "d_state": 16,
+        "discretization": "zoh",
+        "expand": 2,
+        "learned_input_embed": false,
+        "n_layers": 4,
+        "n_mels": 64,
+        "pooling": "mean",
+        "selective": true
+    },
+    "features": {
+        "center": true,
+        "f_max": 8000.0,
+        "f_min": 0.0,
+        "hop_length": 512,
+        "htk": false,
+        "log_eps": 1e-06,
+        "mel_norm": "slaney",
+        "n_fft": 1024,
+        "n_mels": 64,
+        "power": 2.0,
+        "sample_rate": 16000
+    },
+    "training": {
+        "batch_size": 32,
+        "early_stopping_patience": 10,
+        "horizon_k": 2,
+        "learning_rate": 0.001,
+        "max_epochs": 100,
+        "min_val_improv_delta": 0.0003,
+        "target": "residual"
+    },
+    "ckpt_sha256": "edfe4746de8826cd3ad2218aeb1ddecfd0bcc0259014a1479031218ceac9dc39",
+    "torch_version": "2.13.0+cu130",
+    "subsampled_tensors": [
+        ".A_bar",
+        ".B_bar"
+    ],
+    "selected_timesteps": [
+        0,
+        1,
+        2,
+        3,
+        100,
+        171,
+        342,
+        343
+    ],
+    "tensors": {
+        "block0.A_bar": [
+            1,
+            8,
+            128,
+            16
+        ],
+        "block0.B": [
+            1,
+            344,
+            16
+        ],
+        "block0.B_bar": [
+            1,
+            8,
+            128,
+            16
+        ],
+        "block0.C": [
+            1,
+            344,
+            16
+        ],
+        "block0.block_output": [
+            1,
+            344,
+            64
+        ],
+        "block0.delta": [
+            1,
+            344,
+            128
+        ],
+        "block0.h": [
+            35,
+            1,
+            128,
+            16
+        ],
+        "block0.u_post_conv_silu": [
+            1,
+            344,
+            128
+        ],
+        "block0.y_gated": [
+            1,
+            344,
+            128
+        ],
+        "block0.y_scan": [
+            1,
+            344,
+            128
+        ],
+        "block0.z_gate": [
+            1,
+            344,
+            128
+        ],
+        "block1.A_bar": [
+            1,
+            8,
+            128,
+            16
+        ],
+        "block1.B": [
+            1,
+            344,
+            16
+        ],
+        "block1.B_bar": [
+            1,
+            8,
+            128,
+            16
+        ],
+        "block1.C": [
+            1,
+            344,
+            16
+        ],
+        "block1.block_output": [
+            1,
+            344,
+            64
+        ],
+        "block1.delta": [
+            1,
+            344,
+            128
+        ],
+        "block1.h": [
+            35,
+            1,
+            128,
+            16
+        ],
+        "block1.u_post_conv_silu": [
+            1,
+            344,
+            128
+        ],
+        "block1.y_gated": [
+            1,
+            344,
+            128
+        ],
+        "block1.y_scan": [
+            1,
+            344,
+            128
+        ],
+        "block1.z_gate": [
+            1,
+            344,
+            128
+        ],
+        "block2.A_bar": [
+            1,
+            8,
+            128,
+            16
+        ],
+        "block2.B": [
+            1,
+            344,
+            16
+        ],
+        "block2.B_bar": [
+            1,
+            8,
+            128,
+            16
+        ],
+        "block2.C": [
+            1,
+            344,
+            16
+        ],
+        "block2.block_output": [
+            1,
+            344,
+            64
+        ],
+        "block2.delta": [
+            1,
+            344,
+            128
+        ],
+        "block2.h": [
+            35,
+            1,
+            128,
+            16
+        ],
+        "block2.u_post_conv_silu": [
+            1,
+            344,
+            128
+        ],
+        "block2.y_gated": [
+            1,
+            344,
+            128
+        ],
+        "block2.y_scan": [
+            1,
+            344,
+            128
+        ],
+        "block2.z_gate": [
+            1,
+            344,
+            128
+        ],
+        "block3.A_bar": [
+            1,
+            8,
+            128,
+            16
+        ],
+        "block3.B": [
+            1,
+            344,
+            16
+        ],
+        "block3.B_bar": [
+            1,
+            8,
+            128,
+            16
+        ],
+        "block3.C": [
+            1,
+            344,
+            16
+        ],
+        "block3.block_output": [
+            1,
+            344,
+            64
+        ],
+        "block3.delta": [
+            1,
+            344,
+            128
+        ],
+        "block3.h": [
+            35,
+            1,
+            128,
+            16
+        ],
+        "block3.u_post_conv_silu": [
+            1,
+            344,
+            128
+        ],
+        "block3.y_gated": [
+            1,
+            344,
+            128
+        ],
+        "block3.y_scan": [
+            1,
+            344,
+            128
+        ],
+        "block3.z_gate": [
+            1,
+            344,
+            128
+        ],
+        "final_norm_output": [
+            1,
+            344,
+            64
+        ],
+        "head_output": [
+            1,
+            344,
+            64
+        ],
+        "log_mel_unnormalized": [
+            344,
+            64
+        ],
+        "model_input": [
+            1,
+            344,
+            64
+        ],
+        "norm_mean": [
+            64
+        ],
+        "norm_std": [
+            64
+        ],
+        "pooled_concat_mean_last": [
+            1,
+            128
+        ],
+        "pooled_max": [
+            1,
+            64
+        ],
+        "pooled_mean": [
+            1,
+            64
+        ],
+        "selected_timesteps": [
+            8
+        ]
+    }
+}

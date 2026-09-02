@@ -1,0 +1,159 @@
+{
+    "source_wav": "/mnt/d/Tudor/Master/Disertatie/ToyCar-ToyADMOS-DS/case2/NormalSound_IND/1200010003_ToyCar_case2_normal_IND_ch1_0003.wav",
+    "source_cache": "/home/y/projects/ssm-mcu-asd-ind/cache/f55a011a8ef1/1200010003_ToyCar_case2_normal_IND_ch1_0003.npy",
+    "case_id": 2,
+    "clip_index": 0,
+    "held_out_case": 1,
+    "model_hash": "2173b8bdf0f9",
+    "seed": 158,
+    "model": {
+        "d_conv": 4,
+        "d_model": 64,
+        "d_state": 8,
+        "discretization": "euler",
+        "expand": 1,
+        "learned_input_embed": false,
+        "n_layers": 1,
+        "n_mels": 64,
+        "pooling": "mean",
+        "selective": true
+    },
+    "features": {
+        "center": true,
+        "f_max": 8000.0,
+        "f_min": 0.0,
+        "hop_length": 512,
+        "htk": false,
+        "log_eps": 1e-06,
+        "mel_norm": "slaney",
+        "n_fft": 1024,
+        "n_mels": 64,
+        "power": 2.0,
+        "sample_rate": 16000
+    },
+    "training": {
+        "batch_size": 32,
+        "early_stopping_patience": 10,
+        "horizon_k": 2,
+        "learning_rate": 0.001,
+        "max_epochs": 100,
+        "min_val_improv_delta": 0.0003,
+        "target": "residual"
+    },
+    "ckpt_sha256": "78f38372f7058c2f94f92e74728cad9c6e63d8a3445f42c22730e672e7cf6b28",
+    "torch_version": "2.13.0+cu130",
+    "subsampled_tensors": [
+        ".A_bar",
+        ".B_bar"
+    ],
+    "selected_timesteps": [
+        0,
+        1,
+        2,
+        3,
+        100,
+        171,
+        342,
+        343
+    ],
+    "tensors": {
+        "block0.A_bar": [
+            1,
+            8,
+            64,
+            8
+        ],
+        "block0.B": [
+            1,
+            344,
+            8
+        ],
+        "block0.B_bar": [
+            1,
+            8,
+            64,
+            8
+        ],
+        "block0.C": [
+            1,
+            344,
+            8
+        ],
+        "block0.block_output": [
+            1,
+            344,
+            64
+        ],
+        "block0.delta": [
+            1,
+            344,
+            64
+        ],
+        "block0.h": [
+            35,
+            1,
+            64,
+            8
+        ],
+        "block0.u_post_conv_silu": [
+            1,
+            344,
+            64
+        ],
+        "block0.y_gated": [
+            1,
+            344,
+            64
+        ],
+        "block0.y_scan": [
+            1,
+            344,
+            64
+        ],
+        "block0.z_gate": [
+            1,
+            344,
+            64
+        ],
+        "final_norm_output": [
+            1,
+            344,
+            64
+        ],
+        "head_output": [
+            1,
+            344,
+            64
+        ],
+        "log_mel_unnormalized": [
+            344,
+            64
+        ],
+        "model_input": [
+            1,
+            344,
+            64
+        ],
+        "norm_mean": [
+            64
+        ],
+        "norm_std": [
+            64
+        ],
+        "pooled_concat_mean_last": [
+            1,
+            128
+        ],
+        "pooled_max": [
+            1,
+            64
+        ],
+        "pooled_mean": [
+            1,
+            64
+        ],
+        "selected_timesteps": [
+            8
+        ]
+    }
+}
