@@ -1,0 +1,2 @@
+layer,selective,discretization,min_ms,max_ms,median_ms,mean_ms,std_ms,frac_below_conv_window
+0,True,euler,3.333916664123535,1032.96337890625,210.52198791503906,150.33212280273438,96.86063385009766,0.3642578125

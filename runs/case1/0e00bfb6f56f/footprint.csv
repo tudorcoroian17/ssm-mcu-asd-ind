@@ -1,0 +1,4 @@
+pooling,flash_footprint_fp32_kb,flash_footprint_int8_kb,traced_module_activation_fp32_kb,streaming_peak_ram_fp32_kb,streaming_peak_ram_int8_kb
+mean,64.25,16.0625,258.0,22.140625,5.53515625
+max,64.25,16.0625,258.0,22.140625,5.53515625
+concat_mean_last,64.25,16.0625,258.0,22.390625,5.59765625

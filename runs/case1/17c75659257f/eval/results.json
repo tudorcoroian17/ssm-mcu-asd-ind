@@ -1,0 +1,89 @@
+[
+    {
+        "held_out_case": 1,
+        "pooling": "mean",
+        "distance_head": "euclidean",
+        "auc": 0.7809486914600552,
+        "pauc": 0.7040984002706492
+    },
+    {
+        "held_out_case": 1,
+        "pooling": "mean",
+        "distance_head": "mahalanobis",
+        "auc": 0.8874684343434343,
+        "pauc": 0.7880570054613116,
+        "cov_condition_number": 18257.518316640137
+    },
+    {
+        "held_out_case": 1,
+        "pooling": "mean",
+        "distance_head": "knn_full",
+        "auc": 0.8075068870523415,
+        "pauc": 0.7935243584167029
+    },
+    {
+        "held_out_case": 1,
+        "pooling": "mean",
+        "distance_head": "knn_clustered_16",
+        "auc": 0.7563561753902663,
+        "pauc": 0.785791527717365
+    },
+    {
+        "held_out_case": 1,
+        "pooling": "max",
+        "distance_head": "euclidean",
+        "auc": 0.7261105371900827,
+        "pauc": 0.5853722633028853
+    },
+    {
+        "held_out_case": 1,
+        "pooling": "max",
+        "distance_head": "mahalanobis",
+        "auc": 0.7125660009182737,
+        "pauc": 0.5948117539026629,
+        "cov_condition_number": 54.565545077063305
+    },
+    {
+        "held_out_case": 1,
+        "pooling": "max",
+        "distance_head": "knn_full",
+        "auc": 0.7050332874196512,
+        "pauc": 0.5939357691750037
+    },
+    {
+        "held_out_case": 1,
+        "pooling": "max",
+        "distance_head": "knn_clustered_16",
+        "auc": 0.7394828971533516,
+        "pauc": 0.6136454255473395
+    },
+    {
+        "held_out_case": 1,
+        "pooling": "concat_mean_last",
+        "distance_head": "euclidean",
+        "auc": 0.7700298438934803,
+        "pauc": 0.6862162292784302
+    },
+    {
+        "held_out_case": 1,
+        "pooling": "concat_mean_last",
+        "distance_head": "mahalanobis",
+        "auc": 0.8545397153351699,
+        "pauc": 0.7923010004349718,
+        "cov_condition_number": 87225111.97712474
+    },
+    {
+        "held_out_case": 1,
+        "pooling": "concat_mean_last",
+        "distance_head": "knn_full",
+        "auc": 0.8398042929292929,
+        "pauc": 0.7885856169348993
+    },
+    {
+        "held_out_case": 1,
+        "pooling": "concat_mean_last",
+        "distance_head": "knn_clustered_16",
+        "auc": 0.7703168044077136,
+        "pauc": 0.7840999710018849
+    }
+]

@@ -9,7 +9,7 @@ from scipy.stats import genpareto, gamma, lognorm, weibull_min, chi as chi_dist
 from scipy.stats import gaussian_kde
 
 from runs.compute_hash import train_config_hash
-from src.config import load_config, PROJECT_ROOT
+from src.config import load_config, PROJECT_ROOT, load_config_by_name
 from src.eval.embeddings import read_embeddings
 from src.eval.auc_pauc import DISTANCE_HEADS
 
@@ -193,8 +193,7 @@ def calibrated_threshold(val_normal_scores, val_anomaly_scores):
             best_f1, best_t = f1, t
     return float(best_t)
 
-def run_case(held_out_case, cfg, percentile=95, chi2_alpha=0.01, on_held_out=False):
-    dir_name = train_config_hash(cfg, held_out_case)
+def run_case(held_out_case, cfg, dir_name, percentile=95, chi2_alpha=0.01, on_held_out=False):
     out_dir = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / dir_name
     rows, diagnostics = [], []
 
@@ -258,10 +257,23 @@ if __name__ == '__main__':
     parser.add_argument('--same_machine', action='store_true')
     args = parser.parse_args()
 
-    cfg = load_config()
-    for case in [1, 2, 3, 4]:
-        print(f'\n=== held_out_case {case} ===')
-        rows = run_case(case, cfg, on_held_out=args.same_machine)
+    configs_root = PROJECT_ROOT / 'configs' / 'ablation'
+    runs_root = PROJECT_ROOT / 'runs'
+    configs_manifest = pd.read_csv(configs_root / '000_config_manifest.csv')
+
+    for index, row in configs_manifest.iterrows():
+        case = int(row['held_out_case'])
+        model_hash = row['model_hash']
+        ckpt_path = runs_root / f'case{case}' / model_hash / 'ckpt.pt'
+
+        if not ckpt_path.exists():
+            print(f'model {model_hash} not cached')
+            continue
+
+        config_file = load_config_by_name(row['config_name'])
+
+        print(f'\n=== generating embeddings for case {case} -> model {model_hash} ===')
+        rows = run_case(case, config_file, model_hash, on_held_out=args.same_machine)
         for r in rows:
             print(f"{r['pooling']:20s} {r['distance_head']:20s} {r['threshold_method']:12s} "
                   f"P={r['precision']:.3f} R={r['recall']:.3f} A={r['accuracy']:.3f} F1={r['f1']:.3f}")

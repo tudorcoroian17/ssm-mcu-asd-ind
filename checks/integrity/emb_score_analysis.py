@@ -15,14 +15,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 from runs.compute_hash import train_config_hash
-from src.config import PROJECT_ROOT, load_config
+from src.config import PROJECT_ROOT, load_config, load_config_by_name
 from src.eval.embeddings import read_embeddings
 
 POOLING_MODES = ['mean', 'max']
 DISTANCE_HEADS = ['euclidean', 'knn_clustered_16', 'knn_full', 'mahalanobis']
 
-def run_analysis(held_out_case, cfg):
-    dir_name = train_config_hash(cfg, held_out_case)
+def run_analysis(held_out_case, cfg, dir_name):
     base_dir = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / dir_name
     analysis_dir = base_dir / 'analysis'
     analysis_dir.mkdir(parents=True, exist_ok=True)
@@ -121,9 +120,20 @@ def run_analysis(held_out_case, cfg):
             plt.savefig(str(analysis_dir / f'analysis_{pooling_mode}_{distance}.png'), dpi=300, bbox_inches='tight')
 
 if __name__ == "__main__":
-    cfg = load_config()
+    configs_root = PROJECT_ROOT / 'configs' / 'ablation'
+    runs_root = PROJECT_ROOT / 'runs'
+    configs_manifest = pd.read_csv(configs_root / '000_config_manifest.csv')
 
-    cases = [1, 2, 3, 4]
-    for case in cases:
-        print(f'\n=== held_out_case {case} ===')
-        run_analysis(case, cfg)
+    for index, row in configs_manifest.iterrows():
+        case = int(row['held_out_case'])
+        model_hash = row['model_hash']
+        ckpt_path = runs_root / f'case{case}' / model_hash / 'ckpt.pt'
+
+        if not ckpt_path.exists():
+            print(f'model {model_hash} not cached')
+            continue
+
+        config_file = load_config_by_name(row['config_name'])
+
+        print(f'\n=== generating embeddings for case {case} -> model {model_hash} ===')
+        run_analysis(case, config_file, model_hash)

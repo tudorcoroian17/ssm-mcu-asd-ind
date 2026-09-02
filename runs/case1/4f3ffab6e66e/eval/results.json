@@ -12,7 +12,7 @@
         "distance_head": "mahalanobis",
         "auc": 0.7765008034894398,
         "pauc": 0.8245614035087718,
-        "cov_condition_number": 49982.91048384527
+        "cov_condition_number": 49982.91048385237
     },
     {
         "held_out_case": 1,
@@ -41,7 +41,7 @@
         "distance_head": "mahalanobis",
         "auc": 0.8796057162534436,
         "pauc": 0.7890689188536077,
-        "cov_condition_number": 39.363185848204495
+        "cov_condition_number": 39.363185848204516
     },
     {
         "held_out_case": 1,
@@ -70,7 +70,7 @@
         "distance_head": "mahalanobis",
         "auc": 0.6465220385674932,
         "pauc": 0.6115762892078682,
-        "cov_condition_number": 19240063.413647424
+        "cov_condition_number": 19240063.413376596
     },
     {
         "held_out_case": 1,

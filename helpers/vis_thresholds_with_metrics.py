@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from runs.compute_hash import train_config_hash
-from src.config import PROJECT_ROOT, load_config
+from src.config import PROJECT_ROOT, load_config, load_config_by_name
 
 metric_styles = {
     "precision": {
@@ -32,8 +32,7 @@ metric_styles = {
     },
 }
 
-def run_visualize(held_out_case, cfg):
-    dir_name = train_config_hash(cfg, held_out_case)
+def run_visualize(held_out_case, cfg, dir_name):
     base_dir = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / dir_name
     threshold_analysis_dir = base_dir / "secondary_metrics_visuals"
     threshold_analysis_dir.mkdir(parents=True, exist_ok=True)
@@ -126,9 +125,20 @@ def run_visualize(held_out_case, cfg):
         print(f"Saved: {output_filename}")
 
 if __name__ == '__main__':
-    config = load_config()
+    configs_root = PROJECT_ROOT / 'configs' / 'ablation'
+    runs_root = PROJECT_ROOT / 'runs'
+    configs_manifest = pd.read_csv(configs_root / '000_config_manifest.csv')
 
-    cases = [1, 2, 3, 4]
-    for case in cases:
-        print(f'\n=== generating embeddings for case {case} ===')
-        run_visualize(case, config)
+    for index, row in configs_manifest.iterrows():
+        case = int(row['held_out_case'])
+        model_hash = row['model_hash']
+        ckpt_path = runs_root / f'case{case}' / model_hash / 'ckpt.pt'
+
+        if not ckpt_path.exists():
+            print(f'model {model_hash} not cached')
+            continue
+
+        config_file = load_config_by_name(row['config_name'])
+
+        print(f'\n=== generating embeddings for case {case} -> model {model_hash} ===')
+        run_visualize(case, config_file, model_hash)

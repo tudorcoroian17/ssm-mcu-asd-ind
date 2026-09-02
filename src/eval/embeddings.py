@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 
 from runs.compute_hash import train_config_hash
-from src.config import load_config, PROJECT_ROOT
+from src.config import load_config, PROJECT_ROOT, load_config_by_name
 from src.data.folds import get_fold
 from src.features.stats import compute_normalization_stats
 from src.features.baselines import load_fold_clips
@@ -29,8 +29,7 @@ def get_embeddings(model, X, device, batch_size=128):
             embeddings.append(emb.cpu().numpy())
     return np.concatenate(embeddings, axis=0)
 
-def get_embeddings_per_fold(held_out_case, cfg, device):
-    dir_name = train_config_hash(cfg, held_out_case)
+def get_embeddings_per_fold(held_out_case, cfg, device, dir_name):
     base_dir = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / dir_name
     base_dir.mkdir(parents=True, exist_ok=True)
     out_dir = base_dir / 'embeddings'
@@ -96,10 +95,21 @@ def get_embeddings_per_fold(held_out_case, cfg, device):
         )
 
 if __name__ == '__main__':
-    config = load_config()
+    configs_root = PROJECT_ROOT / 'configs' / 'ablation'
+    runs_root = PROJECT_ROOT / 'runs'
+    configs_manifest = pd.read_csv(configs_root / '000_config_manifest.csv')
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    cases = [1, 2, 3, 4]
-    for case in cases:
-        print(f'\n=== generating embeddings for case {case} ===')
-        get_embeddings_per_fold(case, config, device)
+    for index, row in configs_manifest.iterrows():
+        case = int(row['held_out_case'])
+        model_hash = row['model_hash']
+        ckpt_path = runs_root / f'case{case}' / model_hash / 'ckpt.pt'
+
+        if not ckpt_path.exists():
+            print(f'model {model_hash} not cached')
+            continue
+
+        config_file = load_config_by_name(row['config_name'])
+
+        print(f'\n=== generating embeddings for case {case} -> model {model_hash} ===')
+        get_embeddings_per_fold(case, config_file, device, model_hash)

@@ -10,7 +10,7 @@ from sklearn.metrics import roc_auc_score, roc_curve
 import matplotlib.pyplot as plt
 
 from runs.compute_hash import train_config_hash
-from src.config import load_config, PROJECT_ROOT
+from src.config import load_config, PROJECT_ROOT, load_config_by_name
 from src.eval.embeddings import read_embeddings
 
 POOLING_MODES = ['mean', 'max', 'concat_mean_last']
@@ -98,8 +98,7 @@ def plot_embedding_pca(train_emb, test_emb, test_labels, centroid, title, out_pa
     plt.savefig(out_path, dpi=150)
     plt.close()
 
-def run_case_eval(held_out_case, cfg, device):
-    dir_name = train_config_hash(cfg, held_out_case)
+def run_case_eval(held_out_case, cfg, device, dir_name):
     base_dir = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / dir_name
     eval_dir = base_dir / 'eval'
     eval_dir.mkdir(parents=True, exist_ok=True)
@@ -167,12 +166,22 @@ def print_summary(res):
         print(f"{r['pooling']:20s} {r['distance_head']:20s} AUC={r['auc']:.4f}  pAUC={r['pauc']:.4f}")
 
 
-if __name__ == "__main__":
-    cfg = load_config()
+if __name__ == '__main__':
+    configs_root = PROJECT_ROOT / 'configs' / 'ablation'
+    runs_root = PROJECT_ROOT / 'runs'
+    configs_manifest = pd.read_csv(configs_root / '000_config_manifest.csv')
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    cases = [1, 2, 3, 4]
-    for case in cases:
-        print(f'\n=== held_out_case {case} ===')
-        results = run_case_eval(case, cfg, device)
-        print_summary(results)
+    for index, row in configs_manifest.iterrows():
+        case = int(row['held_out_case'])
+        model_hash = row['model_hash']
+        ckpt_path = runs_root / f'case{case}' / model_hash / 'ckpt.pt'
+
+        if not ckpt_path.exists():
+            print(f'model {model_hash} not cached')
+            continue
+
+        config_file = load_config_by_name(row['config_name'])
+
+        print(f'\n=== generating embeddings for case {case} -> model {model_hash} ===')
+        run_case_eval(case, config_file, device, model_hash)

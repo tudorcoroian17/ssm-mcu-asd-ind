@@ -12,7 +12,7 @@
         "distance_head": "mahalanobis",
         "auc": 0.9886792452830189,
         "pauc": 0.9940417080436942,
-        "cov_condition_number": 14738.200824477259
+        "cov_condition_number": 14738.200824476839
     },
     {
         "held_out_case": 3,
@@ -41,7 +41,7 @@
         "distance_head": "mahalanobis",
         "auc": 0.9897757208971164,
         "pauc": 0.9461880047216653,
-        "cov_condition_number": 24.981997140465825
+        "cov_condition_number": 24.98199714046582
     },
     {
         "held_out_case": 3,
@@ -54,8 +54,8 @@
         "held_out_case": 3,
         "pooling": "max",
         "distance_head": "knn_clustered_16",
-        "auc": 0.9802634389462442,
-        "pauc": 0.9410166569860037
+        "auc": 0.9802207191171236,
+        "pauc": 0.9407918157801054
     },
     {
         "held_out_case": 3,
@@ -70,7 +70,7 @@
         "distance_head": "mahalanobis",
         "auc": 0.8688216447134212,
         "pauc": 0.540836784021285,
-        "cov_condition_number": 59616867.033098415
+        "cov_condition_number": 59616867.03541412
     },
     {
         "held_out_case": 3,
