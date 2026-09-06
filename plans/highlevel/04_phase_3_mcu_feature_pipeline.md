@@ -43,6 +43,24 @@ Feed the same `.wav` to the Python pipeline and to each board. Compare per-bin.
 
 **Question:** what tolerance is acceptable, and how do you justify it? It should be tied to something downstream — e.g. the perturbation size at which the Phase 1 GPU model's AUC starts to move — not chosen because it is a round number. Perturbing the GPU features with noise of increasing magnitude and watching AUC is a cheap way to derive a defensible number.
 
+Per-bin log-mel parity tolerance: **0.2627** (absolute, log-mel units), equivalently ~6.3% of
+the natural per-bin log-mel std (4.19, measured across all test-set clips, case 1).
+
+Derivation: additive Gaussian noise injected into unnormalized log-mel at increasing std,
+test-time clips only (reference set unperturbed -- it is never recomputed on-device), scored
+against the trained model's frozen reference embeddings. Knee = smallest noise std after which
+the AUC drop exceeds SEED_SD (0.0132, findings/210) and stays above it for the remainder of the
+sweep. Run on case 1 only (the sole fold with AUC dynamic range, findings/130 section 8) across
+all four Phase 2 refit configurations and both mean+euclidean and mean+knn_clustered_16.
+
+A-selective (d_state=16, expand=1, selective=True) is the binding constraint: its knee (0.788,
+18.8% of natural std) is 3.5x tighter than the next-nearest config under knn_clustered_16, and
+consistent to five significant figures across both scoring heads. This is a standalone finding
+independent of the tolerance itself: the selective branch at this shape is markedly less robust
+to input-feature noise than any of the other three candidates, a third axis (alongside accuracy
+and footprint) on which this configuration pays a cost. Tolerance = A-selective's knee / 3,
+applied uniformly regardless of which configuration is eventually deployed.
+
 ---
 
 ## 3.5 Skewness/kurtosis path

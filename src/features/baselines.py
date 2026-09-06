@@ -27,6 +27,26 @@ def load_fold_clips(rows, mean, std):
     normalize = [apply_normalization(a, mean, std) for a in arrays]
     return np.stack(normalize)
 
+def load_fold_clips_perturbed(rows, mean, std, noise_std, rng):
+    """
+    Same as load_fold_clips, but adds i.i.d. Gaussian noise to the UNNORMALIZED
+    log-mel before applying the fold's normalization stats. This is the layer
+    a board's CMSIS-DSP chain actually produces, and the layer 04_phase_3's
+    parity harness (§3.4) diffs against -- so noise injected here is testing
+    the question that section actually asks, not a proxy for it.
+
+    noise_std=0 must reproduce load_fold_clips exactly; used as the baseline
+    point on the sweep.
+    """
+    arrays = [np.load(p) for p in rows['cache_path']]
+    T_values = {a.shape[0] for a in arrays}
+    assert len(T_values) == 1, f"expected one T across all clips, got {T_values}"
+    if noise_std > 0:
+        arrays = [a + rng.normal(0, noise_std, size=a.shape).astype(np.float32)
+                 for a in arrays]
+    normalize = [apply_normalization(a, mean, std) for a in arrays]
+    return np.stack(normalize)
+
 def compute_baselines(x_train, k):
     assert x_train.ndim == 3, f'expected (n_clips, T, n_mels), got {x_train.shape}'
     n_clips, T, n_mels = x_train.shape
