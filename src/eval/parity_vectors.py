@@ -89,7 +89,7 @@ def select_parity_clip(fold, clip_index=0):
     return ordered.iloc[clip_index]
 
 
-def dump_parity_vectors(cfg, held_out_case, model_hash, device='cpu', clip_index=0):
+def dump_parity_vectors(cfg, held_out_case, model_hash, device='cpu', clip_index=0, streaming=False):
     base_dir = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / model_hash
     ckpt_path = base_dir / 'ckpt.pt'
     assert ckpt_path.exists(), f'no checkpoint at {ckpt_path}'
@@ -115,7 +115,7 @@ def dump_parity_vectors(cfg, held_out_case, model_hash, device='cpu', clip_index
 
     with torch.no_grad():
         collector.record('model_input', x_t)
-        seq_out = model(x_t, mode='sequence', range_recorder=collector)
+        seq_out = model(x_t, mode='sequence', range_recorder=collector, streaming=streaming)
         collector.record('head_output', head(seq_out))
         # mode='pooled' would re-run every block and double each recorded
         # tensor. forward() pools the same post-final_norm tensor, so pooling
@@ -133,10 +133,11 @@ def dump_parity_vectors(cfg, held_out_case, model_hash, device='cpu', clip_index
     arrays['norm_std'] = std
     arrays['selected_timesteps'] = np.array(SELECTED_TIMESTEPS)
 
-    out_path = base_dir / 'parity_vectors.npz'
+    out_path = base_dir / 'parity_vectors.npz' if not streaming else base_dir / 'parity_vectors_streaming.npz'
     np.savez_compressed(out_path, **arrays)
 
     meta = {
+        'streaming': streaming,
         'source_wav': str(row['path']),
         'source_cache': str(row['cache_path']),
         'case_id': int(row['case_id']),
@@ -153,7 +154,8 @@ def dump_parity_vectors(cfg, held_out_case, model_hash, device='cpu', clip_index
         'selected_timesteps': list(SELECTED_TIMESTEPS),
         'tensors': {name: list(arr.shape) for name, arr in sorted(arrays.items())},
     }
-    with open(base_dir / 'parity_vectors_meta.json', 'w') as f:
+    meta_out_path = base_dir / 'parity_vectors_meta.json' if not streaming else base_dir / 'parity_vectors_streaming_meta.json'
+    with open(meta_out_path, 'w') as f:
         json.dump(meta, f, indent=4)
 
     total_mb = sum(a.nbytes for a in arrays.values()) / 1024 ** 2
@@ -170,6 +172,10 @@ if __name__ == '__main__':
     parser.add_argument('--outer', type=int, default=None,
                         help='restrict to one held-out case')
     parser.add_argument('--show-shapes', action='store_true')
+    parser.add_argument('--streaming', action='store_true',
+                        help='use _scan_streaming instead of the batched training path; '
+                             'writes parity_vectors_streaming.npz rather than overwriting '
+                             'the frozen parity_vectors.npz')
     args = parser.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -192,7 +198,7 @@ if __name__ == '__main__':
         case = int(row['held_out_case'])
         print(f"\n=== {row['config_name']} case{case} -> {row['model_hash']} ===")
         cfg = load_config_by_name(row['config_name'])
-        arrays = dump_parity_vectors(cfg, case, row['model_hash'], device=device)
+        arrays = dump_parity_vectors(cfg, case, row['model_hash'], device=device, streaming=args.streaming)
         if args.show_shapes:
             for name, arr in sorted(arrays.items()):
                 print(f'    {name:34s} {tuple(arr.shape)}')

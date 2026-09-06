@@ -291,6 +291,17 @@ clip (batch- and time-invariant), which is the property the static-recurrence C 
 **Closed.** After refit, all necessary evaluation were performed, including the one generating
 `parity_vectors.npz`. All model folders contain the same deliverables.
 
+### Streaming refactor validated
+
+`_scan_streaming` (src/models/ssm_block.py) diffed against the frozen `parity_vectors.npz` for
+all four refit configurations across all four folds (`checks/integrity/diff_parity_vectors.py`).
+Every recorded tensor -- A_bar, B_bar, delta, B, C, z_gate, h, y_scan, y_gated, block_output,
+final_norm_output, head_output, and all three pooling variants -- matches exactly (0.000e+00)
+in every one of the 16 runs. Exact rather than approximate agreement is expected: discretize()
+is reused unchanged and every operation inside it is elementwise with no cross-timestep
+reduction, so restructuring when it's called cannot change the result. The refactor is a
+faithful re-expression of the trained model, not an approximation of it.
+
 ---
 
 ## 10. Open items

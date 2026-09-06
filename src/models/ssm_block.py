@@ -101,7 +101,82 @@ class SSMBlock(nn.Module):
             range_recorder.record(f'{name_prefix}.y_scan', y)
         return (y, h_trace) if return_h_trace else y
 
-    def forward(self, x, return_h_trace=False, range_recorder=None, block_name=''):
+    def _scan_streaming(self, delta, A, B, C, u, return_h_trace=False, range_recorder=None, name_prefix=''):
+        """
+        Same recurrence, same discretize(), fused: A_bar_t/B_bar_t are computed
+        one timestep at a time and consumed immediately, rather than
+        materialized for the whole clip before the loop starts. This is the
+        MCU-realistic memory profile (05_phase_4_backbone_port.md,
+        MambaLite-Micro's fusion, master doc section 3) -- at most one
+        timestep's discretized coefficients exist at once on the selective
+        branch, which is the only branch where they are not already constant.
+
+        discretize() is reused completely unchanged. Every op inside it is
+        elementwise or broadcasts against A, never a reduction across time, so
+        calling it once per timestep on that timestep's slice is mathematically
+        identical to calling it once on the whole sequence and indexing
+        afterward -- there is no floating-point reordering between the two
+        paths. Verify this against _scan() before trusting it for anything.
+
+        On the fixed branch, A_bar/B_bar do not vary with t or batch, so they
+        are discretized once before the loop -- same as the C port will do:
+        precompute outside the time loop, reuse the update inside it. The
+        streaming/batched distinction only has teeth on the selective branch.
+
+        range_recorder: per-step A_bar_t/B_bar_t are accumulated and stacked
+        once at the end into the same (batch, T, d_inner, d_state) shape
+        discretize() records in the batched path, so a parity diff between the
+        two compares like-shaped tensors. This accumulation only happens during
+        a diagnostic dump -- with range_recorder=None (the production path),
+        nothing beyond one timestep's coefficients is ever held.
+        """
+        batch, T = u.shape[0], u.shape[1]
+        h = torch.zeros(batch, self.d_inner, self.d_state, device=u.device, dtype=u.dtype)
+        h_trace = [] if return_h_trace else None
+        ys = []
+
+        if not self.selective:
+            A_bar, B_bar = self.discretize(delta, A, B)
+            u_ts = u.unbind(dim=1)
+            for t in range(T):
+                Bu_t = B_bar * u_ts[t].unsqueeze(-1)
+                h = torch.addcmul(Bu_t, A_bar, h)
+                if return_h_trace:
+                    h_trace.append(h.detach().abs().max().item())
+                if range_recorder is not None and t % 10 == 0:
+                    range_recorder.record(f'{name_prefix}.h', h)
+                ys.append((h * C).sum(dim=-1))
+            if range_recorder is not None:
+                range_recorder.record(f'{name_prefix}.A_bar', A_bar)
+                range_recorder.record(f'{name_prefix}.B_bar', B_bar)
+        else:
+            delta_ts = delta.unbind(dim=1)
+            B_ts = B.unbind(dim=1)
+            C_ts = C.unbind(dim=1)
+            u_ts = u.unbind(dim=1)
+            A_bar_rec, B_bar_rec = ([], []) if range_recorder is not None else (None, None)
+            for t in range(T):
+                A_bar_t, B_bar_t = self.discretize(delta_ts[t], A, B_ts[t])
+                if range_recorder is not None:
+                    A_bar_rec.append(A_bar_t)
+                    B_bar_rec.append(B_bar_t)
+                Bu_t = B_bar_t * u_ts[t].unsqueeze(-1)
+                h = torch.addcmul(Bu_t, A_bar_t, h)
+                if return_h_trace:
+                    h_trace.append(h.detach().abs().max().item())
+                if range_recorder is not None and t % 10 == 0:
+                    range_recorder.record(f'{name_prefix}.h', h)
+                ys.append((h * C_ts[t].unsqueeze(1)).sum(dim=-1))
+            if range_recorder is not None:
+                range_recorder.record(f'{name_prefix}.A_bar', torch.stack(A_bar_rec, dim=1))
+                range_recorder.record(f'{name_prefix}.B_bar', torch.stack(B_bar_rec, dim=1))
+
+        y = torch.stack(ys, dim=1)
+        if range_recorder is not None:
+            range_recorder.record(f'{name_prefix}.y_scan', y)
+        return (y, h_trace) if return_h_trace else y
+
+    def forward(self, x, return_h_trace=False, range_recorder=None, block_name='', streaming=False):
         # return_h_trace is just a debug hook
         batch, T, _ = x.shape
 
@@ -137,19 +212,28 @@ class SSMBlock(nn.Module):
 
         A = -torch.exp(self.A_log) # (d_inner, d_state)
 
-        # Materialize A_bar, B_bar at full to take advantage of GPU parallelism
-        # On MCU, should only materialize A_bar_t, B_bar_t (per timestep)
-        A_bar, B_bar = self.discretize(delta, A, B, range_recorder=range_recorder, name_prefix=block_name) # (batch, T, d_inner, d_state)
+        if streaming:
+            # MCU-realistic path: discretize per timestep, fused into the scan.
+            # See _scan_streaming's docstring for why this reuses discretize()
+            # unchanged rather than needing its own per-step variant.
+            result = self._scan_streaming(delta, A, B, C, u, return_h_trace,
+                                          range_recorder=range_recorder, name_prefix=block_name)
+        else:
+            # Training path, byte-for-byte unchanged from before this refactor.
+            # Materialize A_bar, B_bar at full to take advantage of GPU parallelism.
+            A_bar, B_bar = self.discretize(delta, A, B, range_recorder=range_recorder,
+                                           name_prefix=block_name)  # (batch, T, d_inner, d_state)
 
-        # fixed branch never gets a batch/T dimension from discretize()
-        # (delta/A/B have none to broadcast against), but _scan()'s A_bar[:, t]
-        # indexing assumes one. .expand() is a view -- no extra memory allocated.
-        if not self.selective:
-            A_bar = A_bar.unsqueeze(0).unsqueeze(0).expand(batch, T, -1, -1)
-            B_bar = B_bar.unsqueeze(0).unsqueeze(0).expand(batch, T, -1, -1)
+            # fixed branch never gets a batch/T dimension from discretize()
+            # (delta/A/B have none to broadcast against), but _scan()'s A_bar[:, t]
+            # indexing assumes one. .expand() is a view -- no extra memory allocated.
+            if not self.selective:
+                A_bar = A_bar.unsqueeze(0).unsqueeze(0).expand(batch, T, -1, -1)
+                B_bar = B_bar.unsqueeze(0).unsqueeze(0).expand(batch, T, -1, -1)
 
-        # the scan itself; sequential, one frame at a time
-        result = self._scan(A_bar, B_bar, C, u, return_h_trace, range_recorder=range_recorder, name_prefix=block_name)
+            # the scan itself; sequential, one frame at a time
+            result = self._scan(A_bar, B_bar, C, u, return_h_trace, range_recorder=range_recorder,
+                                name_prefix=block_name)
         y, h_trace = result if return_h_trace else (result, None)
 
         # raw shortcut (D), gate (z), project back to d_model
