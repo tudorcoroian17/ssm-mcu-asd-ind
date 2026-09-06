@@ -54,8 +54,8 @@
         "held_out_case": 3,
         "pooling": "max",
         "distance_head": "knn_clustered_16",
-        "auc": 0.9802207191171236,
-        "pauc": 0.9407918157801054
+        "auc": 0.9802634389462442,
+        "pauc": 0.9410166569860037
     },
     {
         "held_out_case": 3,

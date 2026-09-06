@@ -159,9 +159,17 @@ if __name__ == "__main__":
     runs_root = PROJECT_ROOT / 'runs'
     log_path = runs_root / 'sweep_logs.csv'
     config_manifest = pd.read_csv(str(configs_root / '000_config_manifest.csv'))
-    configs_for_train = config_manifest[(config_manifest['target'] == 'residual') &
-                                        (config_manifest['horizon_k'] == 2) &
-                                        (config_manifest['held_out_case'] == 1)]
+    # Original setup, for training only on held-out-case 1
+    # configs_for_train = config_manifest[(config_manifest['target'] == 'residual') &
+    #                                     (config_manifest['horizon_k'] == 2) &
+    #                                     (config_manifest['held_out_case'] == 1)]
+
+    # Refitting for held-out-cases 2, 3, 4
+    configs_for_train = config_manifest[
+        (config_manifest['config_name'].isin(['f4cd557b7e3b.yaml', 'f2578cb06991.yaml',
+                                              '352f70960ed3.yaml', 'b39731b66741.yaml'])) &
+        (config_manifest['held_out_case'].isin([2, 3, 4]))
+    ]
     queue = configs_for_train.sample(frac=1.0, random_state=ORDER_SEED)
     print(f'{len(queue)} configs in queue')
 
