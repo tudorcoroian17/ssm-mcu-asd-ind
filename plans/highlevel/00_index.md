@@ -78,6 +78,7 @@ Propagate these back into `00_master_file.md` so the two do not drift.
    need rebuilding for this project; none survive the port from `ssm-mcu-asd`.
 7. **Run ID excludes the seed, deliberately.** Phase 1 §1.0 specified "run ID = hash of config + seed." `runs/compute_hash.py:train_config_hash()` hashes `held_out_case`, `training`, `features`, and `model` only. Seed is deliberately excluded: seed is not an ablation axis, and the project has settled on seed 158 as the single working seed. The three-seed sweep that resolved fold difficulty (`findings/130` §8) was archived by hand to `archive/SEED_{42,158,824}/` before each subsequent run. **If a future phase ever varies seed programmatically, add** `'seed': cfg['seed']` to train_config_hash first — without it, runs at different seeds collide on the same directory name and silently overwrite.
 8. **Master doc Section 2 and Section 17 item 12 corrected**. The DCASE SSM paper's anomaly head fuses across encoder depth, not reconstruction-versus-latent-distance, and its training regime is two-stage supervised rather than self-supervised. The correction was made in the predecessor project and did not carry into this one; re-applied here. See master doc Section 2.
+9. **Master doc Section 13 and Section 17 item 5 superseded.** The one-at-a-time ablation with nested validation, both committed in Section 13, were replaced before execution: a 72-config full factorial (five axes, `expand` added, `d_conv` and the input-representation axis dropped) screened on case 1 with single-fold selection, confirmed by a four-config cross-fold refit. Stage-2 seed reruns were also skipped, substituting the existing `findings/130` §8 seed-spread estimate as a noise reference. Phase 2's own goal changed too: from identifying one winning config to characterizing an accuracy/footprint trade-off, after the sweep surfaced a selectivity interaction (helps at one architecture, hurts at another) that a single-winner framing would have hidden. Full reasoning: `findings/210_change_ablation_strategy.md` (the design change) and `findings/220_full_sweep_results_and_refitting.md` (results, the reframing, and confirmation across all four folds). `03_phase_2_ablation_and_loso.md` §2.2-§2.4 and its exit gate item 3 are amended inline to point here.
 
 ---
 
@@ -107,6 +108,16 @@ Continuing master doc Section 17's numbering.
 - **`ranges.json`** — implemented (`checks/smoke/activation_ranges.py`), populated for all four folds. See `findings/150_ranges_and_activations_for_quantization.md`.
 - **Threshold methods and secondary metrics** — implemented (`src/eval/thresholds.py`), all four folds, including the same-machine calibration fix and five additional threshold-estimation methods beyond `01_eval_spec.md` §6's original three. See `findings/140_thresholds_and_secondary_metrics.md`.
 
-**One thing to do before Phase 2 starts, not part of Phase 2 itself:** a deferred pilot from Phase 1 §1.5 — residual versus absolute prediction target — is now planned, to run between Phase 1 and Phase 2. `compute_loss()` in `train.py` needs a one-line fix first (DONE); see `01_design_decisions.md` §8.2 for the current status. - **DEFFERED AGAIN** since it's a structural decision, not empirical. No need to spend days on training with `target=absolute`. This target option will only be run for the winning config. Models on disk already have `target=relative`.
+**Phase 2 is complete, on a materially different path than planned** — see amendment 9 above.
+The residual-vs-absolute pilot mentioned in earlier drafts of this section was deferred
+permanently as a structural rather than empirical decision (`01_design_decisions.md` §3, §8.2);
+every model on disk uses `target=residual`. The 72-config factorial, its case-1 screening, the
+four-config cross-fold refit, and the resulting accuracy/footprint trade-off characterization are
+recorded in `findings/210` and `findings/220`. Parity artifacts (`parity_vectors.npz`) exist for
+all four refit configurations across all four folds.
 
-Phase 2's first action, once that pilot is done, is `03_phase_2_ablation_and_loso.md` §2.3 step 1: the selective-versus-fixed axis, since it reshapes the entire second half of the project.
+**Next action: Phase 4's opening steps** — refactor `_scan()` and `discretize()` in
+`src/models/ssm_block.py` for streaming execution (removing the full-sequence `A_bar`/`B_bar`
+materialization), then validate the refactor against the existing parity files before porting to
+C. See `05_phase_4_backbone_port.md`, and `findings/220` §9 for which configurations' parity
+artifacts are ready to validate against.

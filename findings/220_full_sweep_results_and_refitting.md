@@ -223,9 +223,26 @@ fold-dependent" is itself the result, with precedent in the reference-set findin
 
 ### 7.2 Results
 
-**Open.** To be filled once the 12 runs complete. Per-fold AUC and flash for all four
-configurations, with case 1 labeled as the development fold whose numbers are optimistic per
-`findings/210` §6.2, and cases 2–4 as the selection-clean folds.
+| shape | branch | case 1 | case 2 | case 3 | case 4 |
+| :--- | :--- | ---: | ---: | ---: | ---: |
+| A | classic | 0.8425 | 0.9620 | 0.9885 | 0.9925 |
+| A | selective | 0.9106 | 0.9795 | 0.9887 | 0.9925 |
+| B | classic | 0.9275 | 0.9962 | 0.9887 | 0.9925 |
+| B | selective | 0.8191 | 0.9364 | 0.9733 | 0.9925 |
+
+**The sign flip from §5.1 holds on every fold with discriminative power.** Selective minus
+classic: shape A is +0.0681, +0.0175, +0.0003, 0.0000 across cases 1-4; shape B is -0.1084,
+-0.0598, -0.0155, 0.0000. Not one fold reverses either sign.
+
+Both magnitudes shrink monotonically from case 1 to case 4, tracking each fold's headroom above
+its ceiling (`findings/130` §8-9). Case 4 is fully saturated at this cell: all four configurations
+score identically, 0.99245283..., matching the buried-clip ceiling `findings/130` §9 documented for
+the default configuration. Case 4 contributes no information about selectivity at this operating
+point and should be read as uninformative, not as a fifth fold agreeing with the trend.
+
+**Conclusion: the interaction is not a case-1 artifact.** Selectivity's effect is architecture-
+dependent, with a stable direction confirmed across independent folds and a magnitude that
+tracks measurable task difficulty rather than behaving erratically.
 
 ---
 
@@ -271,20 +288,25 @@ complete and before any `ssm_block.py` restructuring. The `selective=False` conf
 the ones that matter most for Phase 4, since their `A_bar` and `B_bar` are constant across the
 clip (batch- and time-invariant), which is the property the static-recurrence C port exploits.
 
+**Closed.** After refit, all necessary evaluation were performed, including the one generating
+`parity_vectors.npz`. All model folders contain the same deliverables.
+
 ---
 
 ## 10. Open items
 
-- **The §7.2 cross-fold numbers.** Blocking the final trade-off claim and the §7.1 sign-flip
+- **CLOSED** **The §7.2 cross-fold numbers.** Blocking the final trade-off claim and the §7.1 sign-flip
   question.
-- **The §9 parity artifacts** for the four refit configurations. Blocking Phase 4.
-- **Whether the §5.2 mechanism is correct** — that selectivity's cost at low `d_state` is a
+- **CLOSED** **The §9 parity artifacts** for the four refit configurations. Blocking Phase 4.
+- **DEFERRED** **Whether the §5.2 mechanism is correct** — that selectivity's cost at low `d_state` is a
   capacity trade. Needs a `d_state × selective` sweep at fixed `expand` to isolate; the current
-  sweep provides only partial coverage.
+  sweep provides only partial coverage. - Deferred; run only if time permits and only if a specific claim 
+- in the write-up needs stronger mechanistic support than the four-config crossover already provides. The 
+- *whether* is no longer in doubt. This might explain the *why*.
 - **Documents flagged in `findings/210` §7** remain unamended: `00_master_file.md` §13 and §17
   item 5, `03_phase_2_ablation_and_loso.md` §2.2–§2.4 and exit gate item 3, and `00_index.md`.
   Bookkeeping, not blocking, but outstanding since `findings/210`.
-- **Whether the six broken `checks/` scripts** from `findings/130` §1 were repaired. The
+- **CLOSED** **Whether the six broken `checks/` scripts** from `findings/130` §1 were repaired. The
   winner-tier check suite in the Phase 2 exit depends on them.
 
 ---

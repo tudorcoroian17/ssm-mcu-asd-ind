@@ -133,6 +133,11 @@ if __name__ == "__main__":
             print(f'model {model_hash} not cached')
             continue
 
+        analysis_dir = ckpt_path / 'analysis'
+        if analysis_dir.exists():
+            print(f'skipping {model_hash} as it has analysis dir')
+            continue
+
         config_file = load_config_by_name(row['config_name'])
 
         print(f'\n=== generating embeddings for case {case} -> model {model_hash} ===')

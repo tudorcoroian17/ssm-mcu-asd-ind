@@ -26,6 +26,16 @@ Any of these computed globally is leakage.
 
 ## 2.2 Nested validation — resolving master doc Section 17 item 5
 
+> **Superseded.** This section's nested-validation scheme, run-count table, and mitigation
+> ladder describe a design that was not executed. What ran instead: a 72-config full factorial
+> screened on case 1 alone (case 1 is the only fold with enough dynamic range to rank
+> configurations — `findings/210` §3), followed by a four-config cross-fold refit rather than a
+> per-outer-fold nested selection loop. The stage-2 reseed step below (mitigation ladder item,
+> and the separate seed-confirmation stage in `findings/210` §5) was also skipped; a pre-existing
+> seed-spread estimate (`SEED_SD = 0.0132`, from the three-seed default-model run in
+> `findings/130` §8) was used as the reference noise band instead. See `findings/210` for why and
+> `findings/220` for the results. The text below is kept as the original design record.
+
 Master doc Section 13 commits to nested validation and leaves the inner scheme open. Concrete proposal:
 
 ```
@@ -81,6 +91,13 @@ Recommendation: apply mitigation 1 from the outset. 4.3 days of uninterrupted si
 
 ## 2.3 Execution order
 
+> **Superseded.** The factorial that ran covered all five axes simultaneously rather than in the
+> sequence below; the selective-versus-fixed answer came out of the stage-1 marginal effects and
+> a subsequent four-config crossover analysis, not a sequenced first axis. See `findings/220` §5.
+> Kept as the original reasoning for *why* selective-vs-fixed mattered enough to prioritize —
+> that reasoning held even though the sequencing didn't happen as written.
+
+
 **1. Axis 2 (selective vs fixed) first.** Master doc Section 13 says it *"could justify the paper on its own,"* and it determines whether Phase 4 ports a data-dependent recurrence (hard — the Section 11 point 1 problem) or a static one (much easier to quantize). A cheap early answer reshapes the entire second half of the project.
 
 **2. Axis 1 (state dimension).** The other half of Section 1's `[selectivity / state dimension]` placeholder — and simultaneously diagnostic (a) from Phase 1 §1.9. Note that this axis now has a prior: 01_design_decisions.md §8 / Phase 1 §1.9 already established that the recurrent state is load-bearing (zeroing it costs ~3 full skill points). If the d_state sweep comes back flat across N ∈ {8, 16, 32, 64} despite that, the two results are in tension and the tension is itself worth investigating — most likely explanation would be that even N=8 is sufficient capacity, which is a good deployment result and should be reported as one rather than treated as a null.
@@ -93,6 +110,12 @@ Everything else after.
 
 ## 2.4 Reporting
 
+> **Amended.** Reporting shifted from per-axis one-at-a-time delta tables to factorial main
+> effects (via OLS with adjacent-step contrasts — see `findings/215_ols_derivation.md` and
+> `findings/216_ols_implementation.md`) plus a per-fold table for the four confirmed
+> configurations (`findings/220` §7.2). The per-fold, mean-± std principle below still holds and
+> was applied to the refit results.
+
 - **Per-fold table, mean ± std.** Never a bare mean — master doc Section 14's small-N caveat says per-fold variance is itself informative.
 - **Within-type reported now; cross-type deferred.** Master doc Section 14's commitment to reporting both variants still holds — but only within-type (ToyCar) is in scope for this pass. The "generalizes across units vs. across types" comparison isn't answerable until ToyTrain LOSO exists, later, per `01_design_decisions.md` §6.
 - **Skill score alongside AUC for every run.** A config with high AUC and near-zero skill is suspicious — investigate before it goes in a table.
@@ -104,7 +127,7 @@ Everything else after.
 
 1. **Within-type LOSO (ToyCar) complete**, per-fold numbers recorded. Cross-type LOSO is out of scope for this exit gate — deferred per `01_design_decisions.md` §6, to be re-checked once ToyTrain is brought in post-MCU-deployment.
 2. Section 1 placeholders resolvable from the data — you can state which lever the evidence supports.
-3. A winning config identified through the nested procedure, not by eyeballing outer-fold results.
+3. ~~A winning config identified through the nested procedure, not by eyeballing outer-fold results.~~ **Superseded** — Phase 2's goal was reframed from identifying a single winning config to characterizing the accuracy/footprint trade-off (`findings/220` §1). Satisfied instead by: 72-config factorial screened on case 1 against a pre-registered selection rule (`findings/210` §5), four configurations selected to span the trade-off and a confirmed interaction (`findings/220` §5), confirmed by cross-fold refit on cases 2-4 with the interaction's sign and approximate magnitude holding on every fold (`findings/220` §7.2).
 4. `parity_vectors.npz` generated *before* the training environment is torn down.
 
 ---
@@ -113,7 +136,7 @@ Everything else after.
 
 This is the manifest that makes a future Phase 4 session productive rather than speculative.
 
-1. **Winning config**, frozen YAML.
+1. **Configurations**, frozen YAML — plural, not singular. Phase 2 did not resolve to one winner (see exit gate item 3): the handoff is the four refit configurations from `findings/220` (two shapes × two branches), with the accuracy/footprint trade-off between them as the deliverable rather than a single selected model. Phase 4 should treat this as "port whichever of these the C-work prioritizes," most plausibly the `selective=False` configurations first, since their `A_bar`/`B_bar` are precomputable constants (`findings/220` §9).
 2. **Trained checkpoint** for that config.
 3. **Exact parameter count and per-tensor shapes** — every weight, dtype, byte count. This is what gets compared against each board's flash budget.
 4. **`parity_vectors.npz`** — the critical one. An input frame sequence, every intermediate tensor (post-conv, delta, B, C, A_bar, hidden state at selected timesteps, final embedding), and the resulting anomaly score. MambaLite-Micro validated their C engine against a PyTorch reference to ~1.7×10⁻⁵ (master doc Section 3). You cannot run that test in Phase 4 without these vectors, and generating them afterwards means rebuilding a training environment you have moved on from.

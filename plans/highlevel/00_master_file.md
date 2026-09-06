@@ -285,6 +285,20 @@ Welford's advantage (single pass, no need to hold all data in memory) doesn't ap
 
 ## 13. Mechanism-level ablation plan
 
+> **Status note (this project, `ssm-mcu-asd-ind`):** the method below — one-at-a-time from a
+> default, nested validation for selection — was superseded before Phase 2 execution started.
+> What actually ran: a full factorial over five axes (`d_state` {8,16,32}, `n_layers` {1,2,4},
+> `expand` {1,2}, `selective` {true,false}, `discretization` {zoh,euler}), 72 configurations,
+> screened on case 1 with single-fold selection rather than nested validation, then confirmed by
+> a four-config refit across all folds. `expand` was not in the original axis list below and is
+> an addition; the short-conv-kernel axis (`d_conv`, item 5) and the input-representation axis
+> (item 4) were dropped from the sweep entirely — both remain candidate future work, not run.
+> Reasoning for every deviation is in `findings/210_change_ablation_strategy.md` (the factorial
+> and nested-validation decisions) and `findings/220_full_sweep_results_and_refitting.md` (the
+> results, and the further reframing of Phase 2's goal from "identify a winning config" to
+> "characterize the accuracy/footprint trade-off," §1). The text below is the original plan,
+> kept as the record of what was intended before results came in.
+
 **Method: one-at-a-time from a single baseline/default config** — NOT full factorial (too many runs given 8+ candidate axes × 4 LOSO folds × 2 machine types). Pick one default SSM configuration; vary one axis at a time from that default, holding everything else fixed.
 
 **Priority axes (keep — directly serve deployment spine and/or generalization spine):**
@@ -359,7 +373,7 @@ With 4 ToyCar cases: Fold 1 trains (normal-only) on cases 2,3,4 → tests on cas
 4. ~~Check DCASE baselines for ToyCar/ToyTrain cross-ID/cross-type numbers~~ — **RESOLVED: cross-ID numbers exist; cross-type numbers do not appear to.** Reprioritizes Section 14: within-type LOSO is now a sanity-check/re-measurement, cross-type LOSO is the higher-priority novel result.
 
 **Design decisions — all resolved:**
-5. ~~Ablation leakage-risk handling~~ — **RESOLVED: nested validation** (Section 13). Remaining implementation detail: exact inner-fold scheme given only 3 training cases per outer fold.
+5. ~~Ablation leakage-risk handling~~ — **RESOLVED: nested validation** (Section 13). **Superseded:** nested validation was not the scheme actually used. Single-fold screening (case 1) plus a four-config cross-fold refit was substituted, with the seed-confirmation step also dropped in favor of an existing seed-spread estimate. Full reasoning in `findings/210` §5-§6 and `findings/220` §6. Read this item as **RESOLVED, DIFFERENTLY THAN PLANNED**.
 6. ~~LOSO reporting scope~~ — **RESOLVED: report both within-type and cross-type variants** (Section 14).
 7. ~~GPU-first vs. deployment-first sequencing~~ — **RESOLVED: GPU first** (Section 12). This is the natural starting point for implementation work in a new session.
 8. ~~Dataset domain-shift check~~ — **RESOLVED: no domain shift.** Confirmed from the ToyCar dataset paper: fixed recording rig/room/mic setup across all 4 cases; only the motor/bearing hardware varies (Section 15). Domain-shift-handling machinery is not needed for this project, which also simplifies Option 2 (Section 10) if pursued later.
