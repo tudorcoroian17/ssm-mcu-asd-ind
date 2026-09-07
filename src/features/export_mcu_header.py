@@ -60,9 +60,16 @@ window = periodic_hann(n_fft)
 # don't pre-optimize before you've actually measured a shortfall.
 
 
+def format_c_float(v):
+    s = f'{v:.9g}'
+    if 'e' not in s and 'E' not in s and '.' not in s:
+        s += '.0'
+    return s + 'f'
+
+
 def emit_c_array(name, values, ctype='float'):
     if ctype == 'float':
-        body = ', '.join(f'{v:.9g}f' for v in values)
+        body = ', '.join(format_c_float(v) for v in values)
     else:
         body = ', '.join(str(v) for v in values)
     return f'static const {ctype} {name}[{len(values)}] = {{ {body} }};\n'
