@@ -120,4 +120,4 @@ all four refit configurations across all four folds.
 `src/models/ssm_block.py` for streaming execution (removing the full-sequence `A_bar`/`B_bar`
 materialization), then validate the refactor against the existing parity files before porting to
 C. See `05_phase_4_backbone_port.md`, and `findings/220` §9 for which configurations' parity
-artifacts are ready to validate against.
+artifacts are ready to validate against. - DONE
