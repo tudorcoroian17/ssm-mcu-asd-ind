@@ -6,6 +6,7 @@ samples streamed to the board are the samples the reference log-mel is computed
 from. Otherwise a difference in loading or resampling appears as a
 feature-pipeline mismatch that isn't one.
 """
+import argparse
 from pathlib import Path
 
 import librosa
@@ -36,9 +37,16 @@ def main(wav_path):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--clip_name', type=str, default=None)
+    args = parser.parse_args()
+
     manifest = pd.read_csv('manifest.csv')
     ind_clips = manifest[manifest['source'] == 'IND']
     clips_input = [clip['path'] for _, clip in ind_clips.sample(5).iterrows()]
+
+    if args.clip_name:
+        clips_input = [Path('/mnt/d/Tudor/Master/Disertatie/ToyCar-ToyADMOS-DS/case2/NormalSound_IND') / args.clip_name]
 
     for clip in clips_input:
         print(f'Processing {clip}')
