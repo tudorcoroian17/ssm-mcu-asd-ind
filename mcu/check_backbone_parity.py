@@ -31,11 +31,6 @@ def main():
     print(f'reference : {reference}')
     print(f'max abs error  : {abs_err.max():.6e}')
     print(f'mean abs error : {abs_err.mean():.6e}')
-    print(f"(compare against findings/250's tolerance and the 0.000e+00 "
-          f"streaming-vs-batched result in findings/220 section 9 -- this "
-          f"number should be small, not exactly zero, since it now includes "
-          f"real float32 differences between PyTorch and the C port, not "
-          f"just a Python-side refactor)")
 
 
 if __name__ == '__main__':

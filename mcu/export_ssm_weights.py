@@ -31,10 +31,19 @@ from src.features.stats import compute_normalization_stats
 from src.models.backbone import SSMBackbone
 
 
+def format_c_float(v):
+    s = f"{v:.9g}"
+    if "e" not in s and "E" not in s and "." not in s:
+        s += ".0"
+    return s + "f"
+
 def c_array(name, arr, linkage="static const float"):
     flat = np.asarray(arr, dtype=np.float32).flatten()
-    values = ", ".join(f"{v:.9g}f" for v in flat)
+    values = ", ".join(format_c_float(v) for v in flat)
     return f"{linkage} {name}[{flat.size}] = {{ {values} }};"
+
+def precomputed_A(A_log_tensor):
+    return -np.exp(A_log_tensor.detach().cpu().numpy().astype(np.float32))
 
 
 def main():
@@ -92,7 +101,7 @@ typedef struct {{
     const float *x_proj_w;    /* [DT_RANK+2*D_STATE][D_INNER] */
     const float *dt_proj_w;   /* [D_INNER][DT_RANK] */
     const float *dt_proj_b;   /* [D_INNER] */
-    const float *A_log;       /* [D_INNER][D_STATE] */
+    const float *A;           /* [D_INNER][D_STATE], precomputed -exp(A_log) */
     const float *D;           /* [D_INNER] */
     const float *out_proj_w;  /* [D_MODEL][D_INNER] */
     const float *norm_w;      /* [D_MODEL] */
@@ -120,14 +129,14 @@ extern const float ssm_norm_std[SSM_D_MODEL];
         lines.append(c_array(f"{p}_x_proj_w", sd[f"blocks.{i}.x_proj.weight"]))
         lines.append(c_array(f"{p}_dt_proj_w", sd[f"blocks.{i}.dt_proj.weight"]))
         lines.append(c_array(f"{p}_dt_proj_b", sd[f"blocks.{i}.dt_proj.bias"]))
-        lines.append(c_array(f"{p}_A_log", sd[f"blocks.{i}.A_log"]))
+        lines.append(c_array(f"{p}_A", precomputed_A(sd[f"blocks.{i}.A_log"])))
         lines.append(c_array(f"{p}_D", sd[f"blocks.{i}.D"]))
         lines.append(c_array(f"{p}_out_proj_w", sd[f"blocks.{i}.out_proj.weight"]))
         lines.append(c_array(f"{p}_norm_w", sd[f"norms.{i}.weight"]))
         lines.append("")
         entries.append(
             f"    {{ {p}_in_proj_w, {p}_conv_w, {p}_conv_b, {p}_x_proj_w, "
-            f"{p}_dt_proj_w, {p}_dt_proj_b, {p}_A_log, {p}_D, {p}_out_proj_w, "
+            f"{p}_dt_proj_w, {p}_dt_proj_b, {p}_A, {p}_D, {p}_out_proj_w, "
             f"{p}_norm_w }}"
         )
 
