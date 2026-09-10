@@ -36,6 +36,8 @@ import argparse
 import numpy as np
 import torch
 
+from pathlib import Path
+
 from src.config import load_config_by_name, PROJECT_ROOT
 from src.data.folds import get_fold
 from src.features.baselines import apply_normalization
@@ -122,7 +124,8 @@ def quantize_dequantize(w, granularity='per-tensor'):
 
 
 def build_embeddings(cfg, held_out_case, model_hash, quantize,
-                     weight_mode='projections', granularity='per-tensor', device='cpu'):
+                     weight_mode='projections', granularity='per-tensor', device='cpu',
+                     streaming=False):
     base_dir = PROJECT_ROOT / 'runs' / f'case{held_out_case}' / model_hash
     ckpt_path = base_dir / 'ckpt.pt'
     assert ckpt_path.exists(), f'no checkpoint at {ckpt_path}'
@@ -152,7 +155,7 @@ def build_embeddings(cfg, held_out_case, model_hash, quantize,
 
     x_t = torch.from_numpy(x).unsqueeze(0).to(device)
     with torch.no_grad():
-        seq_out = model(x_t, mode='sequence')
+        seq_out = model(x_t, mode='sequence', streaming=streaming)
         embeddings = {}
         for pooling in ('mean', 'max', 'concat_mean_last'):
             model.pooling = pooling
@@ -170,14 +173,26 @@ def main():
                         help='which weight tensors to quantize (see WEIGHT_MODE_SUFFIXES)')
     parser.add_argument('--granularity', choices=GRANULARITIES, default='per-tensor',
                         help='per-tensor (one scale) or per-channel (one scale per axis-0 channel)')
+    parser.add_argument('--dump-reference-dir', default=None,
+                        help="if set, save this run's quantized mean-pooling "
+                             "embedding to <dir>/reference_embedding.npy, for "
+                             "mcu/check_backbone_parity.py to compare against "
+                             "(matches ssm_backbone.c, which only computes "
+                             "mean pooling)")
+    parser.add_argument('--streaming', action='store_true',
+                        help='use _scan_streaming instead of the batched path -- '
+                             'matches ssm_backbone.c\'s evaluation order. Use this '
+                             'when generating a reference for --dump-reference-dir.')
     args = parser.parse_args()
 
     cfg = load_config_by_name(args.config)
 
     fp32, _ = build_embeddings(cfg, args.held_out_case, args.model_hash, quantize=False,
-                               weight_mode=args.weight_mode, granularity=args.granularity)
+                               weight_mode=args.weight_mode, granularity=args.granularity,
+                               streaming=args.streaming)
     int8, stats = build_embeddings(cfg, args.held_out_case, args.model_hash, quantize=True,
-                                   weight_mode=args.weight_mode, granularity=args.granularity)
+                                   weight_mode=args.weight_mode, granularity=args.granularity,
+                                   streaming=args.streaming)
 
     print(f'\nWeight mode: {args.weight_mode}   granularity: {args.granularity}')
     print('\nPer-tensor weight quantization error (worst SNR first):')
@@ -191,6 +206,11 @@ def main():
     for pooling in ('mean', 'max', 'concat_mean_last'):
         d = np.abs(int8[pooling] - fp32[pooling])
         print(f'  {pooling:18s} {d.max():12.6e} {d.mean():12.6e}')
+
+    if args.dump_reference_dir:
+        out_path = Path(args.dump_reference_dir) / 'reference_embedding.npy'
+        np.save(out_path, int8['mean'])
+        print(f'\nWrote quantized mean-pooling reference to {out_path}')
 
 
 if __name__ == '__main__':

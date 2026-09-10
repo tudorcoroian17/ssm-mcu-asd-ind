@@ -118,3 +118,39 @@ that makes a deployment-feasibility claim compelling, and it is now defensible
 on one fold with a stated plus-or-minus. The temptation to report the positive
 deltas as an improvement is the trap -- it would be a claim you cannot defend
 and a reviewer would rightly challenge. Report no-degradation, not gain. -->
+
+## Update — Phase 5 Phase 1 refactor dropped backbone timing further
+
+Backbone compute dropped again, to ~3,921 us/frame (2,352,814 cyc/frame,
+~7.9x headroom against the 32,000 us budget) -- a further ~16% reduction
+from this finding's original ~4,678 us/frame figure above. This happened
+as a side effect of `06_phase5_nucleo_deployment_matrix.md` Phase 1's weight
+plumbing refactor (`SSM_InitWeights()`, `ssm_blocks_working[]`), not of
+anything in this finding -- noted here rather than there because this is
+where the board's timing baseline lives.
+
+No quantization is involved in this change; parity against `findings/430`'s
+reference is unchanged (max abs error 5.99e-4, mean abs error 1.45e-4), so
+the speedup is a pure side effect of how the weights are addressed, not a
+change in what's computed.
+
+Hypothesis, not confirmed: the old `ssm_blocks` was a `const` struct living
+in external flash (XSPI) alongside the weight arrays it points to; the new
+`ssm_blocks_working` is a plain mutable global in internal SRAM. The struct
+itself only holds pointers, and the weight arrays it points to did not move
+-- but `ssm_block_step` re-reads those pointer fields repeatedly inside its
+loops, and in this Debug (`-O0`) build the compiler likely does not hoist
+that load out of the loop. If so, every one of those repeated struct-field
+reads moved from an external-flash access to an internal-SRAM access. Not
+verified against a disassembly or an optimized build -- worth confirming
+directly if this number is ever cited in the paper, so it is correctly
+attributed to this refactor rather than to a later quantization scheme.
+
+<!-- Claude comment: worth a two-minute check before writing this into the
+paper as fact -- either build with -O1 and see if the gap closes (an
+optimizer should hoist this regardless of which array the struct lives in,
+which would confirm the -O0-specific hypothesis), or just diff the
+disassembly of ssm_block_step's inner loop between the two versions. Cheap
+to confirm, and "internal SRAM is faster than external flash for repeated
+small reads" is exactly the kind of specific, checkable claim a reviewer
+might ask about if it ends up in a results table. -->
