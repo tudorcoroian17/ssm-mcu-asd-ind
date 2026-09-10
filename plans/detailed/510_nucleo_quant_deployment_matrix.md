@@ -231,14 +231,79 @@ For each of the four cases, each of items 1-3:
 
 ---
 
+### Phase 7 -- true int8 backbone (post-deployment-matrix, real integer arithmetic)
+
+Motivated and Python-validated in `findings/541` -- not a continuation of
+items 1-6 above, which are all fake-quant (round, then compute in fp32).
+This is genuinely different arithmetic and needs real new C, not a macro
+swap:
+
+- **LUT export.** Six 256-entry `const int8_t[256]` tables (softplus x2
+  layers, silu-at-conv x2 layers, silu-at-z-gate x2 layers), matching
+  `true_int8_sim.py`'s `build_lut`.
+- **Calibration-constant export.** The hook-derived scales
+  (`dt_proj_out`, `conv_out`, `x_proj_delta_low_out`, `norm_out` per layer)
+  plus the discretize-step scales (`A_bar`, `B_bar`, `h` per layer) --
+  roughly double the scale fields `boundaries` added, none of it reusable
+  from that work since these are different tensors.
+- **`h`'s storage type genuinely changes.** Every prior scheme kept
+  `SSMBackbone_State.h[SSM_D_INNER][SSM_D_STATE]` as `float`; this needs it
+  as `int8_t` or `int16_t` for real, in the struct definition in
+  `ssm_backbone.h` and in `SSMBackbone_Reset`, not a macro-level swap.
+- **Suggested width to build first:** int8, not int16, despite `findings/541`
+  showing `euclidean` fails there -- `euclidean` isn't a deployment target
+  (Phase 8), and int8 is the harder, more informative case for the
+  "find the limits" goal this was built for. Build int16 second, as the
+  fallback / comparison point, not the default.
+- Apply the same one-change-at-a-time verification discipline as Phase 4's
+  loop surgery -- this touches more of `ssm_block_step` than any prior
+  phase, and the struct-position class of bug from Phase 3/4's work is a
+  real risk here too, with more new fields than either of those had.
+
+### Phase 8 -- anomaly-scoring head (euclidean, knn_clustered_16)
+
+Nothing before this phase touches scoring -- every prior phase produces an
+embedding, never a decision. From `src/eval/auc_pauc.py`, read directly
+rather than assumed:
+
+- `euclidean`: `centroid = train_emb.mean(axis=0)`;
+  `score = ||query - centroid||`. One 64-float reference vector.
+- `knn_clustered_16`: 16-cluster KMeans fit on `train_emb`;
+  `score = min(||query - centroid_k||)` over the 16 centroids. 16x64 floats.
+
+**Critical design point, not optional:** `train_emb` in the existing
+pipeline is fp32-model embeddings. Whichever backbone scheme actually ships
+(a Phase 1-6 fake-quant scheme, or Phase 7's true-int8 backbone) must be
+used to RECOMPUTE `train_emb` -- and the thresholds in
+`thresholds_same_machine.json` -- before exporting the centroid/cluster
+centers. Comparing a quantized query embedding against an fp32-computed
+reference set is exactly the domain-mismatch class of bug this project has
+repeatedly caught and fixed elsewhere; it must not ship unnoticed here.
+
+Threshold: `runs/case1/16662b29beb3/thresholds_same_machine.json` already
+has computed thresholds (percentile, EVT/GPD, parametric, KDE, MAD, IQR --
+`src/eval/thresholds.py`) for `mean` pooling x both heads. Pick one method
+(EVT is the most principled for a low false-alarm target, per that file's
+own docstring) once `train_emb` is recomputed under the shipped scheme.
+
+C sketch: new `anomaly_head.c`/`.h`, called after `SSMBackbone_GetPooled()`
+-- straightforward L2-distance loops (64 or 1024 multiply-accumulates),
+nothing like the backbone's cost. Open decision: transmit the raw score
+(more flexible, re-thresholdable later) or just the binary decision
+(simpler protocol) -- this project has consistently valued being able to
+re-analyze after the fact, which favors the raw score.
+
+---
+
 ## Open items
 
 - **Second fold.** Every quantization finding so far (`520`-`523`) is case-1
   only. Not blocking this phase, but the eventual paper table needs it.
 - **Percentile-clipped scales** -- deferred by design to Phase 6 above, not
   before.
-- **True int8 arithmetic** -- named explicitly as out of scope for this
-  entire document, not merely unaddressed.
+- **True int8 arithmetic** -- was named explicitly out of scope for this
+  document; reopened and Python-validated in `findings/541`. Phase 7 below
+  scopes the C implementation this now motivates.
 
 <!-- Claude comment: the biggest risk in this plan isn't any single phase,
 it's Phase 4's loop surgery silently going wrong in a way parity doesn't
