@@ -45,7 +45,7 @@ class SSMBlock(nn.Module):
         self.D = nn.Parameter(torch.ones(self.d_inner))
         self.out_proj = nn.Linear(self.d_inner, d_model, bias=False)
 
-    def discretize(self, delta, A, B, range_recorder=None, name_prefix=''):
+    def discretize(self, delta, A, B, range_recorder=None, name_prefix='', quantizer=None):
         deltaA = delta.unsqueeze(-1) * A # (..., d_inner, d_state)
         if self.discretization == "zoh":
             A_bar = torch.exp(deltaA)
@@ -62,10 +62,13 @@ class SSMBlock(nn.Module):
         if range_recorder is not None:
             range_recorder.record(f'{name_prefix}.A_bar', A_bar)
             range_recorder.record(f'{name_prefix}.B_bar', B_bar)
+        if quantizer is not None:
+            A_bar = quantizer.apply(f'{name_prefix}.A_bar', A_bar)
+            B_bar = quantizer.apply(f'{name_prefix}.B_bar', B_bar)
 
         return A_bar, B_bar
 
-    def _scan(self, A_bar, B_bar, C, u, return_h_trace=False, range_recorder=None, name_prefix=''):
+    def _scan(self, A_bar, B_bar, C, u, return_h_trace=False, range_recorder=None, name_prefix='', quantizer=None):
         batch, T = u.shape[0], u.shape[1]
         h = torch.zeros(batch, self.d_inner, self.d_state, device=u.device, dtype=u.dtype)
         h_trace = [] if return_h_trace else None
@@ -81,6 +84,11 @@ class SSMBlock(nn.Module):
             for t in range(T):
                 Bu_t = B_bar_ts[t] * u_ts[t].unsqueeze(-1)
                 h = torch.addcmul(Bu_t, A_bar_ts[t], h)  # Bu_t + A_bar_ts[t] * h, one kernel
+                # h persists across every timestep, so it must be quantized
+                # EVERY step, not on the recorder's t % 10 subsample -- the
+                # quantized state is what feeds the next update.
+                if quantizer is not None:
+                    h = quantizer.apply(f'{name_prefix}.h', h)
                 if return_h_trace:
                     h_trace.append(h.detach().abs().max().item())
                 if range_recorder is not None and t % 10 == 0:
@@ -90,6 +98,8 @@ class SSMBlock(nn.Module):
             for t in range(T):
                 Bu_t = B_bar_ts[t] * u_ts[t].unsqueeze(-1)
                 h = torch.addcmul(Bu_t, A_bar_ts[t], h)
+                if quantizer is not None:
+                    h = quantizer.apply(f'{name_prefix}.h', h)
                 if return_h_trace:
                     h_trace.append(h.detach().abs().max().item())
                 if range_recorder is not None and t % 10 == 0:
@@ -99,9 +109,11 @@ class SSMBlock(nn.Module):
         y = torch.stack(ys, dim=1)
         if range_recorder is not None:
             range_recorder.record(f'{name_prefix}.y_scan', y)
+        if quantizer is not None:
+            y = quantizer.apply(f'{name_prefix}.y_scan', y)
         return (y, h_trace) if return_h_trace else y
 
-    def _scan_streaming(self, delta, A, B, C, u, return_h_trace=False, range_recorder=None, name_prefix=''):
+    def _scan_streaming(self, delta, A, B, C, u, return_h_trace=False, range_recorder=None, name_prefix='', quantizer=None):
         """
         Same recurrence, same discretize(), fused: A_bar_t/B_bar_t are computed
         one timestep at a time and consumed immediately, rather than
@@ -129,6 +141,12 @@ class SSMBlock(nn.Module):
         two compares like-shaped tensors. This accumulation only happens during
         a diagnostic dump -- with range_recorder=None (the production path),
         nothing beyond one timestep's coefficients is ever held.
+
+        quantizer: applied per timestep, so A_bar_t/B_bar_t/h are each
+        quantized against this timestep's slice. This differs from the batched
+        _scan(), which quantizes the whole-clip A_bar/B_bar tensor with one
+        scale -- see the note in the caller. h is quantized every step, as in
+        _scan().
         """
         batch, T = u.shape[0], u.shape[1]
         h = torch.zeros(batch, self.d_inner, self.d_state, device=u.device, dtype=u.dtype)
@@ -136,11 +154,13 @@ class SSMBlock(nn.Module):
         ys = []
 
         if not self.selective:
-            A_bar, B_bar = self.discretize(delta, A, B)
+            A_bar, B_bar = self.discretize(delta, A, B, quantizer=quantizer, name_prefix=name_prefix)
             u_ts = u.unbind(dim=1)
             for t in range(T):
                 Bu_t = B_bar * u_ts[t].unsqueeze(-1)
                 h = torch.addcmul(Bu_t, A_bar, h)
+                if quantizer is not None:
+                    h = quantizer.apply(f'{name_prefix}.h', h)
                 if return_h_trace:
                     h_trace.append(h.detach().abs().max().item())
                 if range_recorder is not None and t % 10 == 0:
@@ -156,12 +176,14 @@ class SSMBlock(nn.Module):
             u_ts = u.unbind(dim=1)
             A_bar_rec, B_bar_rec = ([], []) if range_recorder is not None else (None, None)
             for t in range(T):
-                A_bar_t, B_bar_t = self.discretize(delta_ts[t], A, B_ts[t])
+                A_bar_t, B_bar_t = self.discretize(delta_ts[t], A, B_ts[t], quantizer=quantizer, name_prefix=name_prefix)
                 if range_recorder is not None:
                     A_bar_rec.append(A_bar_t)
                     B_bar_rec.append(B_bar_t)
                 Bu_t = B_bar_t * u_ts[t].unsqueeze(-1)
                 h = torch.addcmul(Bu_t, A_bar_t, h)
+                if quantizer is not None:
+                    h = quantizer.apply(f'{name_prefix}.h', h)
                 if return_h_trace:
                     h_trace.append(h.detach().abs().max().item())
                 if range_recorder is not None and t % 10 == 0:
@@ -174,9 +196,11 @@ class SSMBlock(nn.Module):
         y = torch.stack(ys, dim=1)
         if range_recorder is not None:
             range_recorder.record(f'{name_prefix}.y_scan', y)
+        if quantizer is not None:
+            y = quantizer.apply(f'{name_prefix}.y_scan', y)
         return (y, h_trace) if return_h_trace else y
 
-    def forward(self, x, return_h_trace=False, range_recorder=None, block_name='', streaming=False):
+    def forward(self, x, return_h_trace=False, range_recorder=None, block_name='', streaming=False, quantizer=None):
         # return_h_trace is just a debug hook
         batch, T, _ = x.shape
 
@@ -191,6 +215,8 @@ class SSMBlock(nn.Module):
         u = F.silu(u)  # add non-linearity so in_proj + conv + x_proj don't collapse into one linear map
         if range_recorder is not None:
             range_recorder.record(f'{block_name}.u_post_conv_silu', u)
+        if quantizer is not None:
+            u = quantizer.apply(f'{block_name}.u_post_conv_silu', u)
 
         if self.selective:
             x_dbl = self.x_proj(u) # (batch, T, dt_rank + 2 * d_inner) -> dim 3 has delta, B, and C
@@ -209,6 +235,11 @@ class SSMBlock(nn.Module):
             range_recorder.record(f'{block_name}.B', B)
             range_recorder.record(f'{block_name}.C', C)
             range_recorder.record(f'{block_name}.z_gate', z)
+        if quantizer is not None:
+            delta = quantizer.apply(f'{block_name}.delta', delta)
+            B = quantizer.apply(f'{block_name}.B', B)
+            C = quantizer.apply(f'{block_name}.C', C)
+            z = quantizer.apply(f'{block_name}.z_gate', z)
 
         A = -torch.exp(self.A_log) # (d_inner, d_state)
 
@@ -217,12 +248,13 @@ class SSMBlock(nn.Module):
             # See _scan_streaming's docstring for why this reuses discretize()
             # unchanged rather than needing its own per-step variant.
             result = self._scan_streaming(delta, A, B, C, u, return_h_trace,
-                                          range_recorder=range_recorder, name_prefix=block_name)
+                                          range_recorder=range_recorder, name_prefix=block_name,
+                                          quantizer=quantizer)
         else:
             # Training path, byte-for-byte unchanged from before this refactor.
             # Materialize A_bar, B_bar at full to take advantage of GPU parallelism.
             A_bar, B_bar = self.discretize(delta, A, B, range_recorder=range_recorder,
-                                           name_prefix=block_name)  # (batch, T, d_inner, d_state)
+                                           name_prefix=block_name, quantizer=quantizer)  # (batch, T, d_inner, d_state)
 
             # fixed branch never gets a batch/T dimension from discretize()
             # (delta/A/B have none to broadcast against), but _scan()'s A_bar[:, t]
@@ -233,7 +265,7 @@ class SSMBlock(nn.Module):
 
             # the scan itself; sequential, one frame at a time
             result = self._scan(A_bar, B_bar, C, u, return_h_trace, range_recorder=range_recorder,
-                                name_prefix=block_name)
+                                name_prefix=block_name, quantizer=quantizer)
         y, h_trace = result if return_h_trace else (result, None)
 
         # raw shortcut (D), gate (z), project back to d_model
@@ -241,7 +273,11 @@ class SSMBlock(nn.Module):
         y = y * F.silu(z)
         if range_recorder is not None:
             range_recorder.record(f'{block_name}.y_gated', y)
+        if quantizer is not None:
+            y = quantizer.apply(f'{block_name}.y_gated', y)
         out = self.out_proj(y)
         if range_recorder is not None:
             range_recorder.record(f'{block_name}.block_output', out)
+        if quantizer is not None:
+            out = quantizer.apply(f'{block_name}.block_output', out)
         return (out, h_trace) if return_h_trace else out  # (batch, T, d_model)
