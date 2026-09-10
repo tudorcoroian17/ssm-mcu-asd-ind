@@ -3,9 +3,11 @@ Export a trained SSMBackbone checkpoint to plain C weight arrays for the
 Nucleo-H7S3L8 Phase 4/5 port (05_phase_4_backbone_port.md step 3;
 06_phase_5_quantization_and_head.md's deployment matrix).
 
-GENERATED OUTPUT: ssm_weights.h and ssm_weights.c. Don't hand-edit either;
-rerun this script if the checkpoint, config, fold, or quantization flags
-change.
+GENERATED OUTPUT: ssm_weights.h and ssm_weights.c, PLUS a copy of the
+canonical ssm_backbone.h/.c (see BACKBONE_SRC_DIR below) into --out-dir, so
+every scheme's deploy folder is self-contained. Don't hand-edit any of the
+four; rerun this script if the checkpoint/config/fold/quantization flags
+change, and hand-edit ssm_backbone.c/.h only at their canonical location.
 
 Also exports this fold's per-channel normalization stats (mean/std) --
 the model runs on apply_normalization(log_mel, mean, std)
@@ -13,40 +15,53 @@ the model runs on apply_normalization(log_mel, mean, std)
 src/eval/parity_vectors.py computes it, so these arrays match that fold's
 parity_vectors*.npz "norm_mean"/"norm_std" exactly, not just approximately.
 
---dtype fp32 (the default) stores every weight as a plain float array, same
-values as always. --dtype int8 quantizes the tensors --weight-mode selects
-(mirroring checks/smoke/quant/weight_quant_parity.py's WEIGHT_MODE_SUFFIXES
-exactly -- imported directly, so the two cannot disagree about which tensors
-a mode covers) at --granularity.
+WEIGHTS -- --dtype fp32 (default) stores every weight as a plain float
+array. --dtype int8 quantizes the tensors --weight-mode selects (mirroring
+checks/smoke/quant/weight_quant_parity.py's WEIGHT_MODE_SUFFIXES exactly --
+imported directly, so the two cannot disagree about which tensors a mode
+covers) at --granularity. See that module and findings/520/521 for what
+each mode/granularity means and costs.
 
-DESIGN -- per-access dequantization, no boot-time step, no scratch RAM:
-every weight stays exactly where it's exported (a plain float array, or an
-int8 array + scale, always in flash/.rodata). ssm_backbone.c never reads a
-struct field directly -- it calls an SSM_<FIELD>(w, ...) macro, and this
-script defines that macro two different ways depending on whether the field
-was quantized in THIS export:
-  not quantized:  #define SSM_X(w, ...) ((w)->x[...])
-  quantized:      #define SSM_X(w, ...) ((float)(w)->x_q[...] * (w)->x_scale[...])
-ssm_backbone.c's source text is identical for every scheme; only these
-macro definitions, generated here, differ. There is no runtime "is this
-quantized" branch anywhere -- the choice is fixed at compile time by which
-macro got emitted -- and no lazy one-time initialization step, since every
-pointer is a compile-time constant.
+ACTIVATIONS -- --activation-group boundaries quantizes the five
+layer-boundary activations (u_post_conv_silu, z_gate, y_gated, block_output,
+plus the global final_norm_output) with STATIC per-tensor scales from this
+run's ranges.json (findings/150), matching
+checks/smoke/quant/activation_quant_parity.py's --scale-source ranges
+exactly (load_ranges_scales is imported directly). scan/all are not yet
+wired into ssm_backbone.c -- see that file's ssm_block_step for why (y_scan
+is a scalar consumed inline, not a materialized array; A_bar/B_bar/h live
+inside the tightest loop in the backbone).
 
-Quantization applies uniformly to a field across every layer (never "block0
-quantized, block1 not") since WEIGHT_MODE_SUFFIXES matches by field-type
-name, not layer index. This is what lets the struct's shape and every
-macro's definition be decided once, from layer 0, and reused for every
-other layer -- the per-layer loop below only differs in which layer's real
-data gets declared, never in the shape of what it declares.
+If you use --activation-group boundaries, --weight-mode all is the intended
+pairing: once paying the activation-quantization cost, there's no accuracy
+reason (findings/521) to leave A_log/D/biases in fp32 and leave flash
+savings on the table. --weight-mode/--activation-group are independent
+flags, though, so nothing enforces this pairing -- pass both explicitly.
 
-Per-channel granularity scales along axis 0 of the tensor, which is this
-field's row axis in every weight matrix here -- the same loop variable
-(`o` or `c`) already used at each access site in ssm_backbone.c, so the
-macro's row argument doubles as the per-channel scale index with no extra
-plumbing. 1D fields (biases, D, norm weights) are always per-tensor even
-under --granularity per-channel, matching
-checks/smoke/quant/weight_quant_parity.py's fallback for ndim < 2.
+DESIGN -- per-access dequantization for weights, no boot-time step, no
+scratch RAM: every weight stays exactly where it's exported (plain float
+array, or int8 array + scale, always in flash/.rodata). ssm_backbone.c
+never reads a struct field directly -- it calls an SSM_<FIELD>(w, ...)
+macro (weights) or SSM_QUANT_<FIELD>(w, val) macro (activations), and this
+script defines each one two ways depending on whether that field is
+quantized in THIS export:
+  weight, not quantized:    #define SSM_X(w, ...) ((w)->x[...])
+  weight, quantized:        #define SSM_X(w, ...) ((float)(w)->x_q[...] * (w)->x_scale[...])
+  activation, not quantized: #define SSM_QUANT_X(w, val) (val)
+  activation, quantized:     #define SSM_QUANT_X(w, val) (ssm_quant_dequant((val), (w)->x_scale))
+ssm_backbone.c's source text is identical for every scheme -- fp32, all
+weight-only variants, and boundaries -- because every scheme-specific
+decision lives in these generated macro definitions, never in the .c file.
+
+Struct member order and initializer value order are generated from the same
+loop, in the same order, for every field (weight and activation alike) --
+this is load-bearing. C struct initializers without designators are
+positional: field N of the struct gets value N of the initializer list,
+regardless of either one's name. Declaring a field's struct member in one
+place and appending its init value somewhere else, even a few lines away,
+silently misaligns every field after it. If you add a new field, add its
+member declaration and its init value in the SAME iteration of the SAME
+loop, not in two separately-written blocks.
 
 Usage:
     python mcu/export_ssm_weights.py \
@@ -55,8 +70,17 @@ Usage:
         --held-out-case 1 \
         --out-dir mcu/deploy/case1/weight_int8_proj_pertensor \
         --dtype int8 --weight-mode projections --granularity per-tensor
+
+    python mcu/export_ssm_weights.py \
+        --checkpoint runs/case1/16662b29beb3/ckpt.pt \
+        --config f4cd557b7e3b.yaml \
+        --held-out-case 1 \
+        --out-dir mcu/deploy/case1/weight_act_boundaries_ranges \
+        --dtype int8 --weight-mode all --granularity per-tensor \
+        --activation-group boundaries
 """
 import argparse
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -70,6 +94,27 @@ from src.models.backbone import SSMBackbone
 from checks.smoke.quant.weight_quant_parity import (
     should_quantize, WEIGHT_MODES, GRANULARITIES,
 )
+from checks.smoke.quant.activation_quant_parity import load_ranges_scales
+
+# Canonical, hand-maintained backbone source. Copied byte-for-byte into
+# every --out-dir -- never generated, never scheme-specific. Edit these two
+# files directly when the backbone needs to change (new quantize hooks,
+# bug fixes); this script only ever reads and copies them.
+BACKBONE_SRC_DIR = Path(__file__).parent / "ssm_backbone_src"
+
+ACTIVATION_GROUPS = ("none", "boundaries")
+
+# Layer-scoped boundary activations: struct-member name -> (ranges.json key
+# template, SSM_QUANT_ macro name). Matches
+# checks/smoke/quant/activation_quant.py's 'boundaries' group minus
+# 'final_norm_output', which isn't per-layer (handled separately, alongside
+# ssm_final_norm_w, after the per-layer loop).
+BOUNDARY_FIELDS_PER_LAYER = {
+    "u":         ("block{i}.u_post_conv_silu", "SSM_QUANT_U"),
+    "z":         ("block{i}.z_gate",            "SSM_QUANT_Z"),
+    "y_gated":   ("block{i}.y_gated",            "SSM_QUANT_Y_GATED"),
+    "block_out": ("block{i}.block_output",       "SSM_QUANT_BLOCK_OUT"),
+}
 
 
 def format_c_float(v):
@@ -117,13 +162,11 @@ def quantize_int8_perchannel(w_np):
 
 def emit_2d_field(field_name, macro_name, tensor, quantize, granularity, ncols_macro,
                   decl_lines, member_decls, macro_lines):
-    """Row-major 2D field: SSM_<NAME>(w, r, c). r is also the per-channel
-    scale index when quantized per-channel -- see module docstring.
-    field_name must already be layer-prefixed (e.g. 'blocks_0_in_proj_w') --
-    declares this layer's real data. member_decls/macro_lines should only be
-    the real (shared) lists for one layer (layer 0); pass fresh throwaway
-    lists for every other layer so the struct/macro text isn't duplicated.
-    Returns the init-list expression for this field."""
+    """Row-major 2D weight field: SSM_<NAME>(w, r, c). field_name must
+    already be layer-prefixed (e.g. 'blocks_0_in_proj_w'); declares this
+    layer's real data. member_decls/macro_lines should be the real (shared)
+    lists for layer 0 only; pass fresh throwaway lists for every other
+    layer. Returns this field's init-list expression."""
     flat = np.asarray(tensor.detach().cpu().numpy(), dtype=np.float32)
     bare = field_name.split('_', 2)[-1]
 
@@ -154,9 +197,9 @@ def emit_2d_field(field_name, macro_name, tensor, quantize, granularity, ncols_m
 
 def emit_1d_field(field_name, macro_name, tensor, quantize,
                   decl_lines, member_decls, macro_lines):
-    """1D field: SSM_<NAME>(w, i). Always per-tensor, even under
-    --granularity per-channel -- see module docstring. field_name must
-    already be layer-prefixed. Returns the init-list expression."""
+    """1D weight field: SSM_<NAME>(w, i). Always per-tensor, even under
+    --granularity per-channel. field_name must already be layer-prefixed.
+    Returns the init-list expression."""
     flat = np.asarray(tensor.detach().cpu().numpy(), dtype=np.float32)
     bare = field_name.split('_', 2)[-1]
 
@@ -180,12 +223,12 @@ def emit_1d_field(field_name, macro_name, tensor, quantize,
 def emit_A_field(field_name, macro_name, A_log_tensor, quantize, granularity,
                  decl_lines, member_decls, macro_lines):
     """A is never stored directly -- the checkpoint holds A_log. Not
-    quantized: precompute A = -exp(A_log) once at export time, as before.
-    Quantized: store A_log_q/A_log_scale (findings/521 -- A_log is the
-    tensor that must be quantized, a different, smoother quantity than the
-    exponentiated A) and apply -exp() inside the macro, every access.
-    field_name must already be layer-prefixed (e.g. 'blocks_0_A'). Returns
-    the init-list expression for this field."""
+    quantized: precompute A = -exp(A_log) once at export time. Quantized:
+    store A_log_q/A_log_scale (findings/521 -- A_log is the tensor that must
+    be quantized, a different, smoother quantity than the exponentiated A)
+    and apply -exp() inside the macro, every access. field_name must
+    already be layer-prefixed (e.g. 'blocks_0_A'). Returns the init-list
+    expression."""
     flat = np.asarray(A_log_tensor.detach().cpu().numpy(), dtype=np.float32)
     bare = field_name.split('_', 2)[-1]
 
@@ -227,6 +270,11 @@ def main():
                         help="only meaningful when --dtype int8")
     parser.add_argument("--granularity", choices=GRANULARITIES, default="per-tensor",
                         help="only meaningful when --dtype int8")
+    parser.add_argument("--activation-group", choices=ACTIVATION_GROUPS, default="none",
+                        help="'boundaries' quantizes u/z/y_gated/block_output/final_norm "
+                             "with static ranges.json scales; scan/all not yet supported "
+                             "in ssm_backbone.c. Pair with --weight-mode all (see module "
+                             "docstring).")
     args = parser.parse_args()
 
     cfg = load_config_by_name(args.config)
@@ -238,7 +286,8 @@ def main():
         raise ValueError(
             f"export script assumes euler discretization for the C port's "
             f"discretize step; config says {m['discretization']!r} -- update "
-            f"ssm_backbone.c's ssm_block_step before exporting a zoh config."
+            f"ssm_backbone_src/ssm_backbone.c's ssm_block_step before exporting "
+            f"a zoh config."
         )
 
     model = SSMBackbone(**m)
@@ -263,10 +312,25 @@ def main():
     def is_quantized(sd_key):
         return args.dtype == "int8" and should_quantize(sd_key, args.weight_mode)
 
+    act_quantized = args.activation_group == "boundaries"
+    act_scales = {}
+    if act_quantized:
+        base_dir = Path(args.checkpoint).parent
+        act_scales = load_ranges_scales(base_dir)
+        missing = [
+            key_fmt.format(i=i)
+            for key_fmt, _ in BOUNDARY_FIELDS_PER_LAYER.values()
+            for i in range(n_layers)
+            if key_fmt.format(i=i) not in act_scales
+        ]
+        if "final_norm_output" not in act_scales:
+            missing.append("final_norm_output")
+        if missing:
+            raise KeyError(f"ranges.json at {base_dir} missing keys: {missing}")
+
     # norms.{i}.weight and final_norm.weight all match WEIGHT_MODE_SUFFIXES'
     # 'norms.' pattern identically regardless of i, so this one check (from
-    # block 0) is valid for every norm instance -- same uniformity argument
-    # as the field loop below.
+    # block 0) is valid for every norm instance.
     norm_quantized = is_quantized("norms.0.weight")
     norm_member_decls = []
     if not norm_quantized:
@@ -313,9 +377,6 @@ def main():
          lambda i: f"blocks.{i}.D"),
     ]
 
-    # One loop, every layer -- declares each layer's real data, and (for
-    # layer 0 only) also collects the struct member declarations and macro
-    # definitions, which are identical for every layer by construction.
     for i in range(n_layers):
         init_parts = []
         shape_lists = (member_decls, macro_lines) if i == 0 else ([], [])
@@ -331,12 +392,42 @@ def main():
         init_parts.append(emit_A_field(
             f"blocks_{i}_A", "SSM_A", sd[f"blocks.{i}.A_log"], is_quantized(f"blocks.{i}.A_log"),
             args.granularity, decl_lines, *shape_lists))
+
+        # Activation scales: struct members declared here, at i==0 only (via
+        # shape_lists, same as every weight field above), so their position
+        # in ssm_block_weights_t matches exactly where their values land in
+        # this init list -- immediately before norm_w.
+        if act_quantized:
+            for name in BOUNDARY_FIELDS_PER_LAYER:
+                shape_lists[0].append(f"    float {name}_scale;")
+            for name, (key_fmt, _) in BOUNDARY_FIELDS_PER_LAYER.items():
+                init_parts.append(format_c_float(act_scales[key_fmt.format(i=i)]))
+
         init_parts.append(emit_norm_instance(f"blocks_{i}_norm_w", sd[f"norms.{i}.weight"]))
 
         decl_lines.append("")
         block_inits.append(f"    {{ {', '.join(init_parts)} }}")
 
+    # SSM_QUANT_* macros for the per-layer boundary activations -- same
+    # definition regardless of n_layers, so defined once here rather than
+    # inside the loop.
+    if act_quantized:
+        for name, (_, macro_name) in BOUNDARY_FIELDS_PER_LAYER.items():
+            macro_lines.append(f"#define {macro_name}(w, val) (ssm_quant_dequant((val), (w)->{name}_scale))")
+    else:
+        for name, (_, macro_name) in BOUNDARY_FIELDS_PER_LAYER.items():
+            macro_lines.append(f"#define {macro_name}(w, val) (val)")
+
     final_norm_init = emit_norm_instance("ssm_final_norm_w_data", sd["final_norm.weight"])
+
+    final_norm_scale_decl = ""
+    final_norm_scale_extern = ""
+    if act_quantized:
+        final_norm_scale_decl = f"const float ssm_final_norm_scale = {format_c_float(act_scales['final_norm_output'])};"
+        final_norm_scale_extern = "extern const float ssm_final_norm_scale;"
+        macro_lines.append("#define SSM_QUANT_FINAL_NORM(val) (ssm_quant_dequant((val), ssm_final_norm_scale))")
+    else:
+        macro_lines.append("#define SSM_QUANT_FINAL_NORM(val) (val)")
 
     header = f"""#pragma once
 
@@ -359,15 +450,16 @@ typedef struct {{
     ssm_norm_weights_t norm_w;
 }} ssm_block_weights_t;
 
-/* Weight access -- every field, quantized or not, goes through one of these.
- * Which branch got emitted (plain float, or int8+scale) depends only on
- * this export's --dtype/--weight-mode/--granularity; ssm_backbone.c's
- * source text never changes across schemes. */
+/* Weight and activation access -- every field, quantized or not, goes
+ * through one of these. Which branch got emitted depends only on this
+ * export's --dtype/--weight-mode/--granularity/--activation-group;
+ * ssm_backbone.c's source text never changes across schemes. */
 {chr(10).join(macro_lines)}
 {norm_macro}
 
 extern const ssm_block_weights_t ssm_blocks[SSM_N_LAYERS];
 extern const ssm_norm_weights_t ssm_final_norm_w;
+{final_norm_scale_extern}
 
 /* Per-channel z-score stats for this fold's training data (held-out case
  * {args.held_out_case}). Apply as (raw - ssm_norm_mean) / ssm_norm_std
@@ -385,16 +477,23 @@ extern const float ssm_norm_std[SSM_D_MODEL];
     lines.append("};")
     lines.append("")
     lines.append(f"const ssm_norm_weights_t ssm_final_norm_w = {final_norm_init};")
+    if final_norm_scale_decl:
+        lines.append(final_norm_scale_decl)
     lines.append("")
     lines.append(c_array("ssm_norm_mean", norm_mean, linkage="const float"))
     lines.append(c_array("ssm_norm_std", norm_std, linkage="const float"))
 
     (out_dir / "ssm_weights.c").write_text("\n".join(lines))
 
-    print(f"Wrote {out_dir/'ssm_weights.h'} and {out_dir/'ssm_weights.c'}")
+    for fname in ("ssm_backbone.h", "ssm_backbone.c"):
+        shutil.copy(BACKBONE_SRC_DIR / fname, out_dir / fname)
+
+    print(f"Wrote {out_dir/'ssm_weights.h'}, {out_dir/'ssm_weights.c'}, "
+          f"and copied ssm_backbone.h/.c from {BACKBONE_SRC_DIR}")
     print(f"Total parameters: {sum(p.numel() for p in model.parameters())}")
     mode_str = f"{args.weight_mode}/{args.granularity}" if args.dtype == "int8" else "n/a"
-    print(f"dtype={args.dtype}  weight_mode/granularity={mode_str}")
+    print(f"dtype={args.dtype}  weight_mode/granularity={mode_str}  "
+          f"activation_group={args.activation_group}")
 
 
 if __name__ == "__main__":
