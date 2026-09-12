@@ -1,0 +1,25 @@
+﻿=== berkeley ===
+   text	   data	    bss	    dec	    hex	filename
+  86300	    468	  28932	 115700	  1c3f4	D:\Tudor\Master\Disertatie\ssm-mcu-asd-deploy\nucleo-h7s3l8-ssm-mamba-asd\Appli\Release\nucleo-h7s3l8-ssm-mamba-asd_Appli.elf
+
+=== sysv ===
+D:\Tudor\Master\Disertatie\ssm-mcu-asd-deploy\nucleo-h7s3l8-ssm-mamba-asd\Appli\Release\nucleo-h7s3l8-ssm-mamba-asd_Appli.elf  :
+section                size         addr
+.isr_vector           0x2b0   0x70000000
+.text                0x6e8c   0x700002b0
+.rodata              0xdfd0   0x70007140
+.ARM.extab              0x0   0x70015110
+.ARM                    0x8   0x70015110
+.preinit_array          0x0   0x70015118
+.init_array             0x4   0x70015118
+.fini_array             0x4   0x7001511c
+.data                 0x1d4   0x24000000
+.bss                 0x43fc   0x240001e0
+.ssm_state_dtcm      0x2704   0x20000000
+._user_heap_stack     0x604   0x20002704
+.ARM.attributes        0x2e          0x0
+.comment               0x43          0x0
+.debug_frame         0x10d0          0x0
+Total               0x1d535
+
+

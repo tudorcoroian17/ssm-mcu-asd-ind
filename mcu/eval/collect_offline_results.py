@@ -30,6 +30,7 @@ def get_metric_rows(model_dir):
             diag['held_out_case'],
             diag['model_hash'],
             diag['identifier'],
+            diag['combo_number'],
             diag['backbone']['family'],
             h_width,
             weights,
@@ -46,6 +47,7 @@ def get_metric_rows(model_dir):
             diag['held_out_case'],
             diag['model_hash'],
             diag['identifier'],
+            diag['combo_number'],
             diag['backbone']['family'],
             h_width,
             weights,
@@ -69,10 +71,10 @@ if __name__ == '__main__':
 
     case_dir = MCU_DEPLOY_DIR / f'case{args.held_out_case}'
     out_dir = PROJECT_ROOT / 'mcu' / 'eval' / 'offline'
-    columns_fm = ['config', 'held_out_case', 'model_hash', 'identifier',
+    columns_fm = ['config', 'held_out_case', 'model_hash', 'identifier', 'combo_number',
                   'bb_family', 'bb_h_width', 'bb_weights', 'bb_granularity', 'bb_activation_group', 'bb_recurrence',
                   'head', 'head_precision', 'auc', 'pauc']
-    columns_sm = ['config', 'held_out_case', 'model_hash', 'identifier',
+    columns_sm = ['config', 'held_out_case', 'model_hash', 'identifier', 'combo_number',
                   'bb_family', 'bb_h_width', 'bb_weights', 'bb_granularity', 'bb_activation_group', 'bb_recurrence',
                   'head', 'head_precision',
                   'threshold_method', 'precision', 'recall', 'accuracy', 'f1']
