@@ -44,6 +44,16 @@ import torch
 ACTIVATION_GROUP_SUFFIXES = {
     'scan': ('.delta', '.A_bar', '.B_bar', '.h', '.B', '.C', '.y_scan'),
     'boundaries': ('.u_post_conv_silu', '.z_gate', '.y_gated', '.block_output', 'final_norm_output'),
+    # Classic-only. A strict subset of 'scan', but used for something
+    # different: on the selective branch A_bar/B_bar are genuine per-frame
+    # activations, while on the classic branch they are CONSTANTS that the
+    # qabar deploy schemes ship as int8 weights. There is no state-dict entry
+    # for them, so this is how the fake-quant path quantizes them -- with
+    # scale_source='onthefly' the per-tensor max of a constant IS that
+    # constant's max-abs, and _channel_axis already returns ndim-2 (d_inner)
+    # for both names, so the result is identical to per-tensor/per-channel
+    # weight quantization. Not part of 'all' (both suffixes already are).
+    'discretized_const': ('.A_bar', '.B_bar'),
 }
 ACTIVATION_GROUP_SUFFIXES['all'] = (
     ACTIVATION_GROUP_SUFFIXES['scan'] + ACTIVATION_GROUP_SUFFIXES['boundaries']

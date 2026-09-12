@@ -76,6 +76,18 @@ WEIGHT_MODE_SUFFIXES['all'] = WEIGHT_MODE_SUFFIXES['projections'] + (
     'out_proj.bias',
     '.A',      # matched with a leading dot to hit 'blocks.N.A', not substrings
     '.D',
+    # Classic (selective=False) recurrence parameters. On that branch delta,
+    # B and C are static nn.Parameters instead of x_proj/dt_proj outputs;
+    # without these three, 'all' would leave the entire static recurrence in
+    # fp32 and be strictly weaker than 'all' on a selective config.
+    #
+    # Provably inert for selective configs: no selective state-dict key
+    # contains '.B' or '.C', and '.dt' only matches dt_proj.weight/bias,
+    # both of which this mode already covers. Verify with the snippet in
+    # mcu/export_deploy_matrix_classic.py's header notes before and after.
+    '.B',
+    '.C',
+    '.dt',
 )
 
 WEIGHT_MODES = tuple(WEIGHT_MODE_SUFFIXES)
