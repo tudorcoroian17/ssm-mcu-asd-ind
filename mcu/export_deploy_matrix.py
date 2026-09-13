@@ -23,7 +23,7 @@ archived scripts as a frozen reference without this one drifting from them.
 
 SINGLE HEAD PER FOLDER: each folder scores exactly ONE head (euclidean OR
 knn16). The C SSMHeadResult struct still carries all four fields so main.c
-is byte-for-byte identical across all 18 folders, but the inactive head's
+is byte-for-byte identical across all 20 folders, but the inactive head's
 fields are set to a visible sentinel (score = -1.0, anomaly = 0) on the
 wire, so a folder can never be silently confused for its sibling that
 scores the other head off the same backbone.
@@ -80,15 +80,16 @@ BACKBONE_SRC_TRUE_INT8 = Path(__file__).parent / "ssm_true_int8_src"
 
 DEFAULT_THRESHOLD_METHOD = "percentile_same_machine_99.0"
 KNN16_N_CLUSTERS = 16
+TOTAL_COMBOS = 20
 
 
 # =====================================================================
-# SETUP MATRIX -- the 18 combos, as data. Grouped later by backbone so
+# SETUP MATRIX -- the 20 combos, as data. Grouped later by backbone so
 # each distinct backbone's embeddings are computed exactly once.
 # =====================================================================
 
 def build_setup_matrix():
-    """Returns the 18 setups. Each is a dict fully describing one folder.
+    """Returns the 20 setups. Each is a dict fully describing one folder.
     backbone_key groups setups that share an identical backbone forward
     pass (so embeddings compute once per key, not once per setup)."""
     setups = []
@@ -134,6 +135,24 @@ def build_setup_matrix():
                     "backbone_key": f"true_int8_{h_tag}",
                     "identifier": f"true_int8_{h_tag}_{head}_{head_precision}",
                 })
+
+    # Combos 19-20: full fp32, no quantization anywhere in the backbone --
+    # the unquantized baseline every other combo is measured against.
+    # weight_mode="none" short-circuits should_quantize (see the guard in
+    # is_quantized() inside emit_fake_quant_weights, and the equivalent
+    # guard in build_fake_quant_embeddings), so every tensor -- including
+    # the precomputed A -- ships as plain fp32.
+    for head in ("euclidean", "knn16"):
+        setups.append({
+            "family": "fake_quant",
+            "weight_mode": "none",
+            "granularity": "per-tensor",  # unused: weight_mode="none" quantizes nothing
+            "activation_group": "none",
+            "head": head,
+            "head_precision": "fp32",
+            "backbone_key": "fake_none_none",
+            "identifier": f"full_fp32_{head}_fp32",
+        })
 
     return setups
 
@@ -290,7 +309,10 @@ def emit_fake_quant_weights(out_dir, cfg, sd, dims, norm_stats, weight_mode, gra
     norm_mean, norm_std = norm_stats
 
     def is_quantized(sd_key):
-        return should_quantize(sd_key, weight_mode)
+        # weight_mode="none" is the full-fp32 baseline: nothing is
+        # quantized, so short-circuit before should_quantize (which has no
+        # "none" entry in WEIGHT_MODE_SUFFIXES and would raise KeyError).
+        return weight_mode != "none" and should_quantize(sd_key, weight_mode)
 
     act_quantized = activation_group == "boundaries"
     act_scales = {}
@@ -900,7 +922,8 @@ def build_fake_quant_embeddings(cfg, base_dir, fold, norm_stats, weight_mode,
 
     sd = model.state_dict()
     for name, w in sd.items():
-        if should_quantize(name, weight_mode):
+        # weight_mode="none" (full fp32 baseline): skip quantization entirely.
+        if weight_mode != "none" and should_quantize(name, weight_mode):
             deq, _ = quantize_dequantize(w, granularity)
             sd[name] = deq
     model.load_state_dict(sd)
@@ -1012,8 +1035,12 @@ def describe_setup(setup):
         wm = setup["weight_mode"]
         gran = setup["granularity"]
         act = setup["activation_group"]
-        backbone_desc = (f"weight-only int8 ({wm} tensors, {gran})" if act == "none"
-                         else f"weight int8 ({wm}, {gran}) + activation-boundaries int8")
+        if wm == "none":
+            backbone_desc = "full fp32 (no quantization)"
+        elif act == "none":
+            backbone_desc = f"weight-only int8 ({wm} tensors, {gran})"
+        else:
+            backbone_desc = f"weight int8 ({wm}, {gran}) + activation-boundaries int8"
         head_desc = f"{head_name} head (fp32 arithmetic)"
     else:
         backbone_desc = f"true int8 arithmetic, h storage = {setup['h_width']}"
@@ -1139,7 +1166,7 @@ def main():
     parser.add_argument("--model-hash", required=True)
     parser.add_argument("--deploy-root", default="mcu/deploy")
     parser.add_argument("--only", default=None,
-                        help="comma-separated setup identifiers to build (default: all 18)")
+                        help="comma-separated setup identifiers to build (default: all 20)")
     args = parser.parse_args()
 
     cfg = load_config_by_name(args.config)
@@ -1241,7 +1268,7 @@ def main():
     for setup in setups:
         combo_number = all_identifiers.index(setup["identifier"]) + 1
         ident = setup["identifier"]
-        print(f"\n[{combo_number:2d}/18] {ident}")
+        print(f"\n[{combo_number:2d}/{TOTAL_COMBOS}] {ident}")
         out_dir = setups_root / ident
         out_dir.mkdir(parents=True, exist_ok=True)
 

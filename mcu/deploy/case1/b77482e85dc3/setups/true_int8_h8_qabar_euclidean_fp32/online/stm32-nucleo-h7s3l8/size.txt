@@ -1,25 +1,25 @@
 ﻿=== berkeley ===
    text	   data	    bss	    dec	    hex	filename
- 106480	    468	  22020	 128968	  1f7c8	D:\Tudor\Master\Disertatie\ssm-mcu-asd-deploy\nucleo-h7s3l8-ssm-mamba-asd\Appli\Release\nucleo-h7s3l8-ssm-mamba-asd_Appli.elf
+ 104936	    468	  16900	 122304	  1ddc0	D:\Tudor\Master\Disertatie\ssm-mcu-asd-deploy\nucleo-h7s3l8-ssm-mamba-asd\Appli\Release\nucleo-h7s3l8-ssm-mamba-asd_Appli.elf
 
 === sysv ===
 D:\Tudor\Master\Disertatie\ssm-mcu-asd-deploy\nucleo-h7s3l8-ssm-mamba-asd\Appli\Release\nucleo-h7s3l8-ssm-mamba-asd_Appli.elf  :
 section                size         addr
 .isr_vector           0x2b0   0x70000000
-.text                0x6b08   0x700002b0
-.rodata             0x13228   0x70006db8
-.ARM.extab              0x0   0x70019fe0
-.ARM                    0x8   0x70019fe0
-.preinit_array          0x0   0x70019fe8
-.init_array             0x4   0x70019fe8
-.fini_array             0x4   0x70019fec
+.text                0x6518   0x700002b0
+.rodata             0x13210   0x700067c8
+.ARM.extab              0x0   0x700199d8
+.ARM                    0x8   0x700199d8
+.preinit_array          0x0   0x700199e0
+.init_array             0x4   0x700199e0
+.fini_array             0x4   0x700199e4
 .data                 0x1d4   0x24000000
-.bss                 0x43fc   0x240001e0
+.bss                 0x2ffc   0x240001e0
 .ssm_state_dtcm       0xc04   0x20000000
 ._user_heap_stack     0x604   0x20000c04
 .ARM.attributes        0x2e          0x0
 .comment               0x43          0x0
 .debug_frame         0x1068          0x0
-Total               0x208a1
+Total               0x1ee99
 
 

@@ -141,7 +141,8 @@ def main():
         if setup["family"] == "fake_quant":
             emb = build_classic_fake_quant_embeddings(
                 cfg, base_dir, fold, norm_stats, setup["granularity"],
-                setup["recurrence"], setup["activation_group"])
+                setup["recurrence"], setup["activation_group"],
+                setup.get("weight_mode", "all"))
         else:
             emb = build_classic_true_int8_embeddings(
                 cfg, base_dir, fold, norm_stats, dims, ti_ranges, ti_hook_scales,

@@ -56,9 +56,16 @@ CLASSIFICATION_RULES = [
     # ----------------------------------------------------------------------
     # Backbone: runtime activations. In a selective SSM these are computed per
     # timestep from x_proj, so they appear only if the export stores them.
+    #
+    # (B|C)_q also matches the classic backbone's static B/C weight params
+    # when they're quantized (both paths emit the identical "blocks_N_B_q" /
+    # "blocks_N_C_q" spelling), so on a classic build this rule mislabels a
+    # stored weight as an activation. Pre-existing, not fixed here -- fixing
+    # it needs this file to tell classic and selective builds apart, which
+    # ARCHITECTURE (below) is hardcoded to not yet do.
     # ----------------------------------------------------------------------
     (LAYER + r"[AB]_bar_q$", "backbone", "discretized_state_space", "activation"),
-    (LAYER + r"(B|C)_q$", "backbone", "selective_bc", "activation"),
+    (LAYER + r"(B|C)(_q)?$", "backbone", "selective_bc", "activation"),
     (LAYER + r"delta_q$", "backbone", "selective_delta", "activation"),
     (LAYER + r"(conv_state|ssm_state|scratch|tmp|buf)", "backbone",
      "layer_scratch", "activation"),
@@ -66,15 +73,17 @@ CLASSIFICATION_RULES = [
     # ----------------------------------------------------------------------
     # Backbone: stored weights. Both emission paths are covered so true-int8 and
     # fake-quant builds classify into the same components. The (_q)? forms let a
-    # single rule match the float and quantized spellings of one tensor.
+    # single rule match the float and quantized spellings of one tensor --
+    # including the full_fp32 baseline (weight_mode="none"), which is the only
+    # setup that leaves these five bare.
     # ----------------------------------------------------------------------
-    (LAYER + r"in_proj(_[uz])?_w_q$", "backbone", "in_proj", "weight"),
-    (LAYER + r"out_proj_w_q$", "backbone", "out_proj", "weight"),
-    (LAYER + r"x_proj_w_q$", "backbone", "x_proj", "weight"),
-    (LAYER + r"dt_proj_w_q$", "backbone", "dt_proj", "weight"),
+    (LAYER + r"in_proj(_[uz])?_w(_q)?$", "backbone", "in_proj", "weight"),
+    (LAYER + r"out_proj_w(_q)?$", "backbone", "out_proj", "weight"),
+    (LAYER + r"x_proj_w(_q)?$", "backbone", "x_proj", "weight"),
+    (LAYER + r"dt_proj_w(_q)?$", "backbone", "dt_proj", "weight"),
     (LAYER + r"dt_proj_b(_q)?$", "backbone", "dt_proj", "bias"),
-    (LAYER + r"dt_q$", "backbone", "dt_init", "weight"),
-    (LAYER + r"conv_w_q$", "backbone", "conv", "weight"),
+    (LAYER + r"dt(_q)?$", "backbone", "dt_init", "weight"),
+    (LAYER + r"conv_w(_q)?$", "backbone", "conv", "weight"),
     (LAYER + r"conv_b(_q)?$", "backbone", "conv", "bias"),
     (LAYER + r"A(_log)?_q$", "backbone", "A", "weight"),
     (LAYER + r"A$", "backbone", "A", "weight"),
@@ -94,7 +103,7 @@ CLASSIFICATION_RULES = [
     (r"^SSMBackbone_", "backbone", "backbone_code", "code"),
     (r"^ssm_rmsnorm$", "backbone", "backbone_code", "code"),
     (r"^ssm_(layers|blocks)$", "backbone", "layer_descriptors", "descriptor"),
-    (r"^ssm_final_norm_(w|w_data_q)$", "backbone", "final_norm", "weight"),
+    (r"^ssm_final_norm_(w|w_data(_q)?)$", "backbone", "final_norm", "weight"),
     (r"^ssm_final_norm_(scale|w_data_scale)$", "backbone", "final_norm",
      "quant_param"),
     (r"^ssm_state$", "backbone", "recurrent_state", "activation"),
@@ -122,8 +131,8 @@ CLASSIFICATION_RULES = [
     (r"^hann_window$", "frontend", "window_table", "table"),
     (r"^mel_", "frontend", "mel_filterbank", "table"),
     (r"^(fft_output|windowed_frame|frame_history|power_spectrum|hop_buf|"
-     r"mel_energies|log_mel|rfft_instance)$", "frontend", "frontend_buffers",
-     "activation"),
+     r"mel_energies|log_mel|rfft_instance|overlap)$", "frontend",
+     "frontend_buffers", "activation"),
 
     # ----------------------------------------------------------------------
     # CMSIS-DSP.

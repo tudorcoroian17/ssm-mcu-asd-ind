@@ -21,7 +21,7 @@ package structure needed). This guarantees the offline numbers use
 IDENTICAL logic to what actually got baked into each setup's C files, and
 the same per-backbone caching: embeddings and head fits are each computed
 once per distinct backbone config, not once per setup (7 distinct configs
-across all 18 setups, exactly as export_deploy_matrix.py itself caches).
+across all 20 setups, exactly as export_deploy_matrix.py itself caches).
 
 SPLIT SOURCE: load_resolved_fold(base_dir) -- the SAME
 runs/case<N>/<model_hash>/embeddings/manifest.csv 'used_in' column
@@ -33,7 +33,7 @@ export_deploy_matrix.py first -- the parity check below will otherwise
 flag every setup as mismatched, which is the correct behavior, not a bug
 in this script.
 
-INT8-HEAD SCORING (4 of the 18 setups: true_int8 x {euclidean,knn16} x
+INT8-HEAD SCORING (4 of the 20 setups: true_int8 x {euclidean,knn16} x
 head_precision=int8): offline/scores' score/decision replicate the EXACT
 device-side int32 arithmetic path (quantize embedding to int8 at
 final_norm_scale via quantize_ref_int8 -- the SAME function used to
@@ -85,6 +85,7 @@ from mcu.export_deploy_matrix import (
     build_setup_matrix, load_resolved_fold, build_fake_quant_embeddings,
     build_true_int8_embeddings, fit_head, compute_all_thresholds,
     quantize_ref_int8, DEFAULT_THRESHOLD_METHOD, KNN16_N_CLUSTERS,
+    TOTAL_COMBOS
 )
 
 
@@ -208,7 +209,7 @@ def main():
     parser.add_argument("--model-hash", required=True)
     parser.add_argument("--deploy-root", default="mcu/deploy")
     parser.add_argument("--only", default=None,
-                        help="comma-separated setup identifiers (default: all 18)")
+                        help=f"comma-separated setup identifiers (default: all {TOTAL_COMBOS})")
     args = parser.parse_args()
 
     cfg = load_config_by_name(args.config)
@@ -296,11 +297,11 @@ def main():
         ident = setup["identifier"]
         setup_dir = setups_root / ident
         if not setup_dir.is_dir():
-            print(f"\n[{combo_number:2d}/18] {ident}: SKIP -- not yet exported "
-                 f"by export_deploy_matrix.py")
+            print(f"\n[{combo_number:2d}/{TOTAL_COMBOS}] {ident}: SKIP -- not yet exported "
+                  f"by export_deploy_matrix.py")
             continue
         setup["_setup_dir"] = setup_dir  # threaded through to check_ref_parity
-        print(f"\n[{combo_number:2d}/18] {ident}")
+        print(f"\n[{combo_number:2d}/{TOTAL_COMBOS}] {ident}")
 
         offline_dir = setup_dir / "offline"
         if offline_dir.exists():

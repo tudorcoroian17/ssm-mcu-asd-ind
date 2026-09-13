@@ -14,7 +14,7 @@ Same eight C files, README.md and diagnostics.json per folder, same layout,
 same guarantees. The model hash differs from any selective run, so classic
 and selective folders can never collide.
 
-THE MATRIX -- 28 combos:
+THE MATRIX -- 30 combos:
 
     8   weight-only int8, ALL weights
         granularity {per-channel, per-tensor} x recurrence x head
@@ -22,6 +22,9 @@ THE MATRIX -- 28 combos:
         recurrence x head
     16  true int8 arithmetic
         h-width {int8, int16} x recurrence x head x head-precision {fp32, int8}
+    2   full fp32, no quantization anywhere -- the unquantized baseline.
+        Recurrence fixed to qab (qabar always bakes+quantizes A_bar/B_bar
+        unconditionally, so it cannot express "unquantized"). Head only.
 
 `projections` is deliberately absent as a weight mode. On this branch it
 would mean in_proj + conv + out_proj + norms only, which is a different set
@@ -106,7 +109,7 @@ BACKBONE_SRC_CLASSIC_TRUE_INT8 = Path(__file__).parent / "ssm_true_int8_classic_
 # readout, not part of the discretize step).
 QABAR_EXCLUDED_SUFFIXES = (".A_log", ".dt", ".B")
 
-TOTAL_COMBOS = 28
+TOTAL_COMBOS = 30
 
 
 # =====================================================================
@@ -114,7 +117,7 @@ TOTAL_COMBOS = 28
 # =====================================================================
 
 def build_classic_setup_matrix():
-    """Returns the 28 setups. backbone_key groups setups that share an
+    """Returns the 30 setups. backbone_key groups setups that share an
     identical backbone forward pass, so embeddings compute once per key:
     6 fake-quant passes (fast) and 4 true-int8 passes (slow)."""
     setups = []
@@ -150,31 +153,54 @@ def build_classic_setup_matrix():
                 "identifier": f"w_all_pertensor_actboundaries_{recurrence}_{head}_fp32",
             })
 
-    # Combos 13-28: true int8.
-    for h_width, h_tag in (("int8", "h8"), ("int16", "h16")):
-        for recurrence in RECURRENCES:
-            for head in ("euclidean", "knn16"):
-                for head_precision in ("fp32", "int8"):
-                    setups.append({
-                        "family": "true_int8",
-                        "h_width": h_width,
-                        "recurrence": recurrence,
-                        "head": head,
-                        "head_precision": head_precision,
-                        "backbone_key": f"true_int8_{h_tag}_{recurrence}",
-                        "identifier": f"true_int8_{h_tag}_{recurrence}_{head}_{head_precision}",
-                    })
+        # Combos 13-28: true int8.
+        for h_width, h_tag in (("int8", "h8"), ("int16", "h16")):
+            for recurrence in RECURRENCES:
+                for head in ("euclidean", "knn16"):
+                    for head_precision in ("fp32", "int8"):
+                        setups.append({
+                            "family": "true_int8",
+                            "h_width": h_width,
+                            "recurrence": recurrence,
+                            "head": head,
+                            "head_precision": head_precision,
+                            "backbone_key": f"true_int8_{h_tag}_{recurrence}",
+                            "identifier": f"true_int8_{h_tag}_{recurrence}_{head}_{head_precision}",
+                        })
 
-    return setups
+        # Combos 29-30: full fp32, no quantization anywhere in the backbone.
+        # Recurrence is fixed to "qab": qabar always bakes and quantizes A_bar/
+        # B_bar unconditionally (see the "Always quantized" comment in
+        # emit_classic_fake_quant_weights), so it has no way to express an
+        # unquantized backbone. qab computes the recurrence at runtime from
+        # A_log/dt/B exactly as a stock, unquantized model would.
+        for head in ("euclidean", "knn16"):
+            setups.append({
+                "family": "fake_quant",
+                "weight_mode": "none",
+                "granularity": "per-tensor",  # unused: weight_mode="none" quantizes nothing
+                "activation_group": "none",
+                "recurrence": "qab",
+                "head": head,
+                "head_precision": "fp32",
+                "backbone_key": "fake_none_qab_none",
+                "identifier": f"full_fp32_{head}_fp32",
+            })
+
+        return setups
 
 
-def classic_should_quantize(param_name, recurrence):
+def classic_should_quantize(param_name, recurrence, weight_mode="all"):
     """Every weight in the classic matrix is quantized (weight_mode='all'),
-    minus whatever this recurrence form does not ship.
+    minus whatever this recurrence form does not ship. weight_mode="none"
+    is the full-fp32 baseline: nothing is quantized, regardless of
+    recurrence.
 
     Relies on WEIGHT_MODE_SUFFIXES['all'] having been extended with '.B',
     '.C' and '.dt' -- see the note in weight_quant_parity.py. Without that
     extension this silently leaves the whole static recurrence in fp32."""
+    if weight_mode == "none":
+        return False
     if not should_quantize(param_name, "all"):
         return False
     if recurrence == "qabar" and param_name.endswith(QABAR_EXCLUDED_SUFFIXES):
@@ -228,12 +254,13 @@ class ChainedQuantizer:
 # =====================================================================
 
 def emit_classic_fake_quant_weights(out_dir, sd, dims, norm_stats, granularity,
-                                    recurrence, activation_group, checkpoint_dir):
+                                    recurrence, activation_group, checkpoint_dir,
+                                    weight_mode="all"):
     d_model, d_state, d_inner, d_conv, n_layers = dims
     norm_mean, norm_std = norm_stats
 
     def is_quantized(sd_key):
-        return classic_should_quantize(sd_key, recurrence)
+        return classic_should_quantize(sd_key, recurrence, weight_mode)
 
     act_quantized = activation_group == "boundaries"
     act_scales = load_ranges_scales(checkpoint_dir) if act_quantized else {}
@@ -606,7 +633,7 @@ extern const float ssm_norm_std[SSM_D_MODEL];
 # =====================================================================
 
 def build_classic_fake_quant_embeddings(cfg, base_dir, fold, norm_stats, granularity,
-                                        recurrence, activation_group):
+                                        recurrence, activation_group, weight_mode="all"):
     device = "cpu"
     mean, std = norm_stats
     model = SSMBackbone(**cfg["model"]).to(device)
@@ -616,7 +643,7 @@ def build_classic_fake_quant_embeddings(cfg, base_dir, fold, norm_stats, granula
 
     sd = model.state_dict()
     for name, w in sd.items():
-        if classic_should_quantize(name, recurrence):
+        if classic_should_quantize(name, recurrence, weight_mode):
             deq, _ = quantize_dequantize(w, granularity)
             sd[name] = deq
     model.load_state_dict(sd)
@@ -706,6 +733,26 @@ SHIPPED_TENSORS = {
 
 
 def classic_recurrence_section(setup):
+    if setup.get("weight_mode") == "none":
+        lines = [
+            "## Recurrence form: full fp32 (no quantization)",
+            "",
+            "This is the classic (`selective=False`) matrix's unquantized baseline. "
+            "It uses the same runtime discretize step as `qab` -- "
+            "`delta = softplus(dt)`, `A = -exp(A_log)`, "
+            "`A_bar = 1 + clamp(delta*A, -1.9)`, `B_bar = delta*B`, computed every "
+            "frame -- except nothing is quantized: `A_log`, `dt` and `B` ship as "
+            "plain fp32.",
+            "",
+            f"Tensors in this folder's `ssm_weights.c`: {SHIPPED_TENSORS['qab']}.",
+            "",
+            "`ssm_backbone.c` is byte-for-byte identical to every other setup in "
+            "this matrix: the difference is entirely in `ssm_weights.c`'s values, "
+            "which are fp32 here instead of int8.",
+            "",
+        ]
+        return "\n".join(lines)
+
     recurrence = setup["recurrence"]
     lines = [
         "## Recurrence form: `" + recurrence + "`",
@@ -800,7 +847,8 @@ def main():
         if setup["family"] == "fake_quant":
             emb = build_classic_fake_quant_embeddings(
                 cfg, base_dir, fold, norm_stats, setup["granularity"],
-                setup["recurrence"], setup["activation_group"])
+                setup["recurrence"], setup["activation_group"],
+                setup.get("weight_mode", "all"))
         else:
             emb = build_classic_true_int8_embeddings(
                 cfg, base_dir, fold, norm_stats, dims, ti_ranges, ti_hook_scales,
@@ -850,7 +898,8 @@ def main():
         if setup["family"] == "fake_quant":
             emit_classic_fake_quant_weights(
                 out_dir, sd, dims, norm_stats, setup["granularity"],
-                setup["recurrence"], setup["activation_group"], base_dir)
+                setup["recurrence"], setup["activation_group"], base_dir,
+                setup.get("weight_mode", "all"))
             if setup["activation_group"] == "boundaries":
                 final_norm_scale = load_ranges_scales(base_dir)["final_norm_output"]
         else:
@@ -895,7 +944,9 @@ def main():
                          if k in ("family", "weight_mode", "granularity",
                                   "activation_group", "h_width", "recurrence")},
             "quantized_state_dict_keys": sorted(
-                k for k in sd if classic_should_quantize(k, setup["recurrence"])),
+                k for k in sd
+                if classic_should_quantize(k, setup["recurrence"], setup.get("weight_mode", "all"))
+            ),
             "head": setup["head"],
             "head_precision": setup["head_precision"],
             "default_threshold_method": chosen_method,
