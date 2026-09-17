@@ -9,7 +9,7 @@ from src.config import PROJECT_ROOT
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--board', type=str, required=True)
-    parser.add_argument('--freq-ms', type=int, required=True)
+    parser.add_argument('--freq-mhz', type=int, required=True)
     parser.add_argument('--frames', type=int, default=344)
     args = parser.parse_args()
 
@@ -23,7 +23,7 @@ def main():
     out_dir = PROJECT_ROOT / 'mcu' / 'eval' / 'online' / args.board
 
     # Millisecond conversions
-    cycles_per_ms = args.freq_ms * 1000
+    cycles_per_ms = args.freq_mhz * 1000
     timing_df["feature_ms"] = timing_df["mean_feature_cycles"] / cycles_per_ms
     timing_df["normalize_ms"] = timing_df["mean_normalize_cycles"] / cycles_per_ms
     timing_df["backbone_ms"] = timing_df["mean_backbone_cycles"] / cycles_per_ms
