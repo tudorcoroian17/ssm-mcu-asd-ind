@@ -110,7 +110,8 @@ def main():
     parser.add_argument("--board", type=str, required=True)
     args = parser.parse_args()
 
-    board_list = ['stm32-nucleo-h7s3l8', 'esp32', 'arduino-uno-rp2040']
+    board_list = ['stm32-nucleo-h7s3l8', 'esp32', 'arduino-nano-rp2040-connect-mbed',
+                  'arduino-nano-rp2040-connect-pico']
     if args.board not in board_list:
         raise ValueError(f'Board not supported. Must be one of {board_list}')
 

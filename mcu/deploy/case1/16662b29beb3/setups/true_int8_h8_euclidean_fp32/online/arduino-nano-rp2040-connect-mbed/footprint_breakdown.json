@@ -1,0 +1,234 @@
+{
+    "reported_total_bytes": 223680,
+    "captured_total_bytes": 186499,
+    "by_category": {
+        "arduino_core_mbed": 56886,
+        "other": 232,
+        "toolchain_libs": 45891,
+        "sketch_main": 5692,
+        "audio_ingest": 120,
+        "feature_pipeline": 18006,
+        "ssm_backbone": 1630,
+        "ssm_head": 356,
+        "cmsis_dsp_rfft": 14650,
+        "ssm_weights": 43036
+    },
+    "top_objects_by_category": {
+        "arduino_core_mbed": [
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\mbed_nano\\4.4.1\\variants\\NANO_RP2040_CONNECT/libs/libmbed.a(USBDevice.o)",
+                6338
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build/core\\core.a(Serial.cpp.o)",
+                2988
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build/core\\core.a(USBCDC.cpp.o)",
+                2881
+            ],
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\mbed_nano\\4.4.1\\variants\\NANO_RP2040_CONNECT/libs/libmbed.a(mbed_retarget.o)",
+                2855
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build/core\\core.a(PluggableUSBDevice.cpp.o)",
+                2704
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build/core\\core.a(USBSerial.cpp.o)",
+                2645
+            ],
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\mbed_nano\\4.4.1\\variants\\NANO_RP2040_CONNECT/libs/libmbed.a(USBPhy_RP2040.o)",
+                1970
+            ],
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\mbed_nano\\4.4.1\\variants\\NANO_RP2040_CONNECT/libs/libmbed.a(rtx_thread.o)",
+                1956
+            ],
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\mbed_nano\\4.4.1\\variants\\NANO_RP2040_CONNECT/libs/libmbed.a(rtx_lib.o)",
+                1899
+            ],
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\mbed_nano\\4.4.1\\variants\\NANO_RP2040_CONNECT/libs/libmbed.a(SerialBase.o)",
+                1393
+            ],
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\mbed_nano\\4.4.1\\variants\\NANO_RP2040_CONNECT/libs/libmbed.a(mbed_error.o)",
+                1381
+            ],
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\mbed_nano\\4.4.1\\variants\\NANO_RP2040_CONNECT/libs/libmbed.a(rtx_msgqueue.o)",
+                1362
+            ],
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\mbed_nano\\4.4.1\\variants\\NANO_RP2040_CONNECT/libs/libmbed.a(irq.o)",
+                1355
+            ],
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\mbed_nano\\4.4.1\\variants\\NANO_RP2040_CONNECT/libs/libmbed.a(timer.o)",
+                1103
+            ],
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\mbed_nano\\4.4.1\\variants\\NANO_RP2040_CONNECT/libs/libmbed.a(mbed_ticker_api.o)",
+                1062
+            ]
+        ],
+        "other": [
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v6-m/crt0.o",
+                128
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m/crtbegin.o",
+                104
+            ]
+        ],
+        "toolchain_libs": [
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v6-m\\libc.a(lib_a-vfprintf.o)",
+                6348
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v6-m\\libc.a(lib_a-svfprintf.o)",
+                6012
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v6-m\\libc.a(lib_a-dtoa.o)",
+                4284
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v6-m\\libc.a(lib_a-mallocr.o)",
+                2456
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v6-m\\libc.a(lib_a-mprec.o)",
+                1960
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m\\libgcc.a(subdf3.o)",
+                1680
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m\\libgcc.a(divdf3.o)",
+                1604
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m\\libgcc.a(adddf3.o)",
+                1592
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m\\libgcc.a(muldf3.o)",
+                1316
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v6-m\\libc.a(lib_a-impure.o)",
+                1072
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m\\libgcc.a(subsf3.o)",
+                904
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v6-m\\libc.a(lib_a-fseeko.o)",
+                824
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m\\libgcc.a(addsf3.o)",
+                820
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v6-m\\libc.a(lib_a-fvwrite.o)",
+                764
+            ],
+            [
+                "c:/users/mypc/appdata/local/arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m\\libgcc.a(divsf3.o)",
+                676
+            ]
+        ],
+        "sketch_main": [
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\sketch\\arduino-nano-rp2040-connect-ssm-mamba-asd.ino.cpp.o",
+                5692
+            ]
+        ],
+        "audio_ingest": [
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\sketch\\audio_ingest.cpp.o",
+                120
+            ]
+        ],
+        "feature_pipeline": [
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\sketch\\feature_pipeline.c.o",
+                18006
+            ]
+        ],
+        "ssm_backbone": [
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\sketch\\ssm_backbone.c.o",
+                1630
+            ]
+        ],
+        "ssm_head": [
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\sketch\\ssm_head_ref.c.o",
+                260
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\sketch\\ssm_distance_head.c.o",
+                96
+            ]
+        ],
+        "cmsis_dsp_rfft": [
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\libraries\\CMSIS_DSP_RFFT\\arm_common_tables.c.o",
+                9088
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\libraries\\CMSIS_DSP_RFFT\\arm_cfft_f32.c.o",
+                2536
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\libraries\\CMSIS_DSP_RFFT\\arm_cfft_radix8_f32.c.o",
+                2208
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\libraries\\CMSIS_DSP_RFFT\\arm_rfft_fast_f32.c.o",
+                574
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\libraries\\CMSIS_DSP_RFFT\\arm_bitreversal2.c.o",
+                64
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\libraries\\CMSIS_DSP_RFFT\\arm_cmplx_mag_squared_f32.c.o",
+                50
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\libraries\\CMSIS_DSP_RFFT\\arm_dot_prod_f32.c.o",
+                50
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\libraries\\CMSIS_DSP_RFFT\\arm_rfft_fast_init_f32.c.o",
+                36
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\libraries\\CMSIS_DSP_RFFT\\arm_cfft_init_f32.c.o",
+                28
+            ],
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\libraries\\CMSIS_DSP_RFFT\\arm_const_structs.c.o",
+                16
+            ]
+        ],
+        "ssm_weights": [
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040\\build\\sketch\\ssm_weights.c.o",
+                43036
+            ]
+        ]
+    }
+}

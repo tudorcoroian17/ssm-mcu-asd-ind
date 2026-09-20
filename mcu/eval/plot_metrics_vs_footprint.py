@@ -167,6 +167,7 @@ def parse_arguments():
         action="store_true",
         help="Whether to plot broken flash axis or not.",
     )
+    parser.add_argument("--board", type=str, required=True)
     return parser.parse_args()
 
 
@@ -615,6 +616,11 @@ def generate_second_metrics(df_second: pd.DataFrame, output_dir: str, broken_axi
 # ---------------------------------------------------------
 def main():
     args = parse_arguments()
+
+    board_list = ['stm32-nucleo-h7s3l8', 'esp32', 'arduino-nano-rp2040-connect-mbed',
+                  'arduino-nano-rp2040-connect-pico']
+    if args.board not in board_list:
+        raise ValueError(f"Board not supported. Must be one of {board_list}")
 
     first_file = resolve_file_path(args.first_metrics, "first_metrics.csv")
     second_file = resolve_file_path(args.second_metrics, "second_metrics.csv")

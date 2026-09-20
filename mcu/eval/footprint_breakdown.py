@@ -587,7 +587,7 @@ def main() -> int:
         type=Path,
         default=Path.home() / "projects/ssm-mcu-asd-ind/mcu/deploy",
     )
-    parser.add_argument("--board", default="stm32-nucleo-h7s3l8")
+    parser.add_argument("--board", type=str, required=True)
     parser.add_argument("--case", default="case*")
     parser.add_argument("--model", default="*")
     parser.add_argument("--setup", default="*")
@@ -601,6 +601,11 @@ def main() -> int:
     parser.add_argument("--list-unclassified", action="store_true",
                         help="Print every unmatched symbol, largest first.")
     args = parser.parse_args()
+
+    board_list = ['stm32-nucleo-h7s3l8', 'esp32', 'arduino-nano-rp2040-connect-mbed',
+                  'arduino-nano-rp2040-connect-pico']
+    if args.board not in board_list:
+        raise ValueError(f"Board not supported. Must be one of {board_list}")
 
     targets = find_targets(args.deploy_root, args.board, args.case, args.model,
                            args.setup)
