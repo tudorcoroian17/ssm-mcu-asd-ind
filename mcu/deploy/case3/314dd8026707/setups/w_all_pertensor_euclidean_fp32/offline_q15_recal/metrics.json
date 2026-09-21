@@ -1,0 +1,219 @@
+{
+    "identifier": "w_all_pertensor_euclidean_fp32",
+    "config": "b39731b66741.yaml",
+    "held_out_case": 3,
+    "model_hash": "314dd8026707",
+    "n_test_clips": 530,
+    "test_feature_dir": "cache_features_q15",
+    "test_feature_recipe_fingerprint": "aacf6b5b987ff7fba71b9a44f0eded309f36f2b01c902f6c0b502687d766ab5c",
+    "default_threshold_method": "percentile_same_machine_99.0",
+    "parity_check_against_deployed_c": {
+        "ok": true,
+        "detail": "match within formatting tolerance (max abs diff 0.00e+00)"
+    },
+    "auc": 0.865119259522962,
+    "pauc": 0.7180491278034888,
+    "thresholds": {
+        "percentile_same_machine_95.0": {
+            "threshold": 2.1807281970977783,
+            "info": {
+                "percentile": 95.0
+            },
+            "metrics": {
+                "precision": 0.9315068493150684,
+                "recall": 0.5132075471698113,
+                "accuracy": 0.7377358490566037,
+                "f1": 0.6618004866180048
+            }
+        },
+        "percentile_same_machine_99.0": {
+            "threshold": 2.6190943717956543,
+            "info": {
+                "percentile": 99.0
+            },
+            "metrics": {
+                "precision": 0.96,
+                "recall": 0.27169811320754716,
+                "accuracy": 0.630188679245283,
+                "f1": 0.4235294117647059
+            }
+        },
+        "percentile_same_machine_99.5": {
+            "threshold": 6.107848167419434,
+            "info": {
+                "percentile": 99.5
+            },
+            "metrics": {
+                "precision": 0.7142857142857143,
+                "recall": 0.018867924528301886,
+                "accuracy": 0.5056603773584906,
+                "f1": 0.03676470588235294
+            }
+        },
+        "evt_p95_equiv": {
+            "threshold": 2.168826882114135,
+            "info": {
+                "u0": 2.0056467056274414,
+                "shape": 0.6145661348742932,
+                "scale": 0.1903817801696267,
+                "n_exceedances": 108
+            },
+            "metrics": {
+                "precision": 0.9324324324324325,
+                "recall": 0.5207547169811321,
+                "accuracy": 0.7415094339622641,
+                "f1": 0.6682808716707022
+            }
+        },
+        "parametric_p95_equiv": {
+            "threshold": 2.3388498297629896,
+            "info": {
+                "best_family": "lognorm",
+                "aic_by_family": {
+                    "gamma": 1411.2366008402782,
+                    "lognorm": 1301.6250316022838,
+                    "weibull_min": 1857.6800850188765,
+                    "chi": 1649.4122038530602
+                }
+            },
+            "metrics": {
+                "precision": 0.9333333333333333,
+                "recall": 0.4226415094339623,
+                "accuracy": 0.6962264150943396,
+                "f1": 0.5818181818181818
+            }
+        },
+        "kde_p95_equiv": {
+            "threshold": 2.222479512993469,
+            "info": {
+                "bandwidth_factor": 0.24712350348878998,
+                "n_calib": 1085
+            },
+            "metrics": {
+                "precision": 0.9295774647887324,
+                "recall": 0.4981132075471698,
+                "accuracy": 0.730188679245283,
+                "f1": 0.6486486486486487
+            }
+        },
+        "evt_p99_equiv": {
+            "threshold": 2.967580142459629,
+            "info": {
+                "u0": 2.0056467056274414,
+                "shape": 0.6145661348742932,
+                "scale": 0.1903817801696267,
+                "n_exceedances": 108
+            },
+            "metrics": {
+                "precision": 0.9607843137254902,
+                "recall": 0.18490566037735848,
+                "accuracy": 0.5886792452830188,
+                "f1": 0.310126582278481
+            }
+        },
+        "parametric_p99_equiv": {
+            "threshold": 2.9011991608878755,
+            "info": {
+                "best_family": "lognorm",
+                "aic_by_family": {
+                    "gamma": 1411.2366008402782,
+                    "lognorm": 1301.6250316022838,
+                    "weibull_min": 1857.6800850188765,
+                    "chi": 1649.4122038530602
+                }
+            },
+            "metrics": {
+                "precision": 0.9642857142857143,
+                "recall": 0.2037735849056604,
+                "accuracy": 0.5981132075471698,
+                "f1": 0.3364485981308411
+            }
+        },
+        "kde_p99_equiv": {
+            "threshold": 2.7080743038403456,
+            "info": {
+                "bandwidth_factor": 0.24712350348878998,
+                "n_calib": 1085
+            },
+            "metrics": {
+                "precision": 0.9714285714285714,
+                "recall": 0.25660377358490566,
+                "accuracy": 0.6245283018867924,
+                "f1": 0.4059701492537313
+            }
+        },
+        "evt_p999_equiv": {
+            "threshold": 6.931340845508181,
+            "info": {
+                "u0": 2.0056467056274414,
+                "shape": 0.6145661348742932,
+                "scale": 0.1903817801696267,
+                "n_exceedances": 108
+            },
+            "metrics": {
+                "precision": 1.0,
+                "recall": 0.007547169811320755,
+                "accuracy": 0.5037735849056604,
+                "f1": 0.0149812734082397
+            }
+        },
+        "parametric_p999_equiv": {
+            "threshold": 3.693734293943364,
+            "info": {
+                "best_family": "lognorm",
+                "aic_by_family": {
+                    "gamma": 1411.2366008402782,
+                    "lognorm": 1301.6250316022838,
+                    "weibull_min": 1857.6800850188765,
+                    "chi": 1649.4122038530602
+                }
+            },
+            "metrics": {
+                "precision": 0.9375,
+                "recall": 0.11320754716981132,
+                "accuracy": 0.5528301886792453,
+                "f1": 0.20202020202020202
+            }
+        },
+        "kde_p999_equiv": {
+            "threshold": 6.937363157390959,
+            "info": {
+                "bandwidth_factor": 0.24712350348878998,
+                "n_calib": 1085
+            },
+            "metrics": {
+                "precision": 1.0,
+                "recall": 0.007547169811320755,
+                "accuracy": 0.5037735849056604,
+                "f1": 0.0149812734082397
+            }
+        },
+        "mad": {
+            "threshold": 3.029078960418701,
+            "info": {
+                "median": 1.4179657697677612,
+                "mad": 0.31048452854156494
+            },
+            "metrics": {
+                "precision": 0.9565217391304348,
+                "recall": 0.1660377358490566,
+                "accuracy": 0.5792452830188679,
+                "f1": 0.2829581993569132
+            }
+        },
+        "iqr": {
+            "threshold": 3.609345316886902,
+            "info": {
+                "q1": 1.076417326927185,
+                "q3": 1.7096493244171143,
+                "iqr": 0.6332319974899292
+            },
+            "metrics": {
+                "precision": 0.9375,
+                "recall": 0.11320754716981132,
+                "accuracy": 0.5528301886792453,
+                "f1": 0.20202020202020202
+            }
+        }
+    }
+}

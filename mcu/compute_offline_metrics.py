@@ -202,6 +202,45 @@ def write_csv_row(csv_path, row):
         writer.writerow(row)
 
 
+def remap_test_features(fold, feature_dir, require_metadata=True, splits=("test",)):
+    """Points the chosen splits at another feature folder (for example
+    cache_features_q15) and leaves every other split unchanged.
+
+    splits may contain "test" and "calib_normal". Train never changes, so the
+    centroid or clusters, the normalization statistics, and the true-int8
+    calibration stay exactly as deployed. With "test" only, the thresholds stay
+    as deployed too (drop-in). With "calib_normal", the thresholds are
+    recalibrated on the new features.
+
+    feature_dir must hold one <clip stem>.npy per clip of each chosen split.
+    If it has a metadata.json, that file must say "complete": true.
+    Returns (new_fold, metadata dict or None). The input fold is not changed."""
+    feature_dir = Path(feature_dir)
+    meta = None
+    meta_path = feature_dir / "metadata.json"
+    if meta_path.is_file():
+        with open(meta_path) as f:
+            meta = json.load(f)
+        if not meta.get("complete", False):
+            raise ValueError(f"{meta_path} says complete: false. Finish the cache first.")
+    elif require_metadata:
+        raise FileNotFoundError(f"no metadata.json in {feature_dir}")
+
+    new_fold = dict(fold)
+    for split in splits:
+        if split not in ("test", "calib_normal"):
+            raise ValueError(f"cannot remap split {split!r}: use test or calib_normal")
+        rows = fold[split].copy()
+        paths = [feature_dir / f"{Path(p).stem}.npy" for p in rows["path"]]
+        missing = [p.name for p in paths if not p.is_file()]
+        if missing:
+            raise FileNotFoundError(f"{len(missing)} of {len(paths)} {split} clips have no "
+                                    f"feature file in {feature_dir}. First: {missing[:3]}")
+        rows["cache_path"] = [str(p) for p in paths]
+        new_fold[split] = rows
+    return new_fold, meta
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
@@ -210,7 +249,23 @@ def main():
     parser.add_argument("--deploy-root", default="mcu/deploy")
     parser.add_argument("--only", default=None,
                         help=f"comma-separated setup identifiers (default: all {TOTAL_COMBOS})")
+    parser.add_argument("--test-feature-dir", default=None,
+                        help="folder with one <clip>.npy per clip, for example "
+                             "cache_features_q15. Only the test split reads its features "
+                             "from it. Train and calibration keep their cache_path "
+                             "features, so the head and the thresholds stay as deployed.")
+    parser.add_argument("--feature-splits", nargs="+", choices=["test", "calib_normal"],
+                        default=["test"],
+                        help="splits that read their features from --test-feature-dir. "
+                             "test: drop-in. test calib_normal: thresholds recalibrated.")
+    parser.add_argument("--no-feature-metadata-check", action="store_true",
+                        help="plumbing test only: accept a folder without metadata.json")
+    parser.add_argument("--offline-subdir", default="offline",
+                        help="folder name under each setup that receives the results")
     args = parser.parse_args()
+    if args.test_feature_dir and args.offline_subdir == "offline":
+        parser.error("with --test-feature-dir, also pass --offline-subdir (for example "
+                     "offline_q15). The default 'offline' would delete the existing results.")
 
     cfg = load_config_by_name(args.config)
     m = cfg["model"]
@@ -232,6 +287,14 @@ def main():
     # Same source as export_deploy_matrix.py post-fix and run_deployment_test.py --
     # this identity is what makes an offline/online comparison meaningful.
     fold = load_resolved_fold(base_dir)
+    feature_meta = None
+    if args.test_feature_dir:
+        fold, feature_meta = remap_test_features(
+            fold, args.test_feature_dir,
+            require_metadata=not args.no_feature_metadata_check,
+            splits=tuple(args.feature_splits))
+        print(f"Test features from {args.test_feature_dir} "
+              f"(train and calibration keep the cache_path features)")
     test_rows = fold["test"].reset_index(drop=True)
     test_labels = (test_rows["label"].values == "anomaly").astype(int)
     clip_names = [Path(p).stem for p in test_rows["path"]]
@@ -303,7 +366,7 @@ def main():
         setup["_setup_dir"] = setup_dir  # threaded through to check_ref_parity
         print(f"\n[{combo_number:2d}/{TOTAL_COMBOS}] {ident}")
 
-        offline_dir = setup_dir / "offline"
+        offline_dir = setup_dir / args.offline_subdir
         if offline_dir.exists():
             # Idempotent per run: without this, re-running this script for
             # a setup already processed would silently APPEND a duplicate
@@ -372,6 +435,8 @@ def main():
             "config": args.config, "held_out_case": args.held_out_case,
             "model_hash": args.model_hash,
             "n_test_clips": len(test_rows),
+            "test_feature_dir": args.test_feature_dir,
+            "test_feature_recipe_fingerprint": (feature_meta or {}).get("recipe_fingerprint"),
             "default_threshold_method": DEFAULT_THRESHOLD_METHOD,
             "parity_check_against_deployed_c": {"ok": parity_ok, "detail": parity_detail},
             "auc": auc, "pauc": pauc,
@@ -385,7 +450,7 @@ def main():
              f"P={default_m['precision']:.3f} R={default_m['recall']:.3f} "
              f"A={default_m['accuracy']:.3f} F1={default_m['f1']:.3f}")
 
-    print(f"\nDone. Offline artifacts written under each setup's offline/ subfolder.")
+    print(f"\nDone. Offline artifacts written under each setup's {args.offline_subdir}/ subfolder.")
 
 
 if __name__ == "__main__":

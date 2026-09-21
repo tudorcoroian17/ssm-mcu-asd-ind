@@ -62,7 +62,7 @@ from mcu.export_deploy_matrix import (
     load_resolved_fold, fit_head, compute_all_thresholds, DEFAULT_THRESHOLD_METHOD,
 )
 from mcu.compute_offline_metrics import (
-    check_ref_parity, score_int8_device_path, write_csv_row,
+    check_ref_parity, score_int8_device_path, write_csv_row, remap_test_features
 )
 from mcu.export_deploy_matrix_classic import (
     TOTAL_COMBOS, build_classic_setup_matrix,
@@ -78,7 +78,23 @@ def main():
     parser.add_argument("--deploy-root", default="mcu/deploy")
     parser.add_argument("--only", default=None,
                         help=f"comma-separated setup identifiers (default: all {TOTAL_COMBOS})")
+    parser.add_argument("--test-feature-dir", default=None,
+                        help="folder with one <clip>.npy per clip, for example "
+                             "cache_features_q15. Only the test split reads its features "
+                             "from it. Train and calibration keep their cache_path "
+                             "features, so the head and the thresholds stay as deployed.")
+    parser.add_argument("--feature-splits", nargs="+", choices=["test", "calib_normal"],
+                        default=["test"],
+                        help="splits that read their features from --test-feature-dir. "
+                             "test: drop-in. test calib_normal: thresholds recalibrated.")
+    parser.add_argument("--no-feature-metadata-check", action="store_true",
+                        help="plumbing test only: accept a folder without metadata.json")
+    parser.add_argument("--offline-subdir", default="offline",
+                        help="folder name under each setup that receives the results")
     args = parser.parse_args()
+    if args.test_feature_dir and args.offline_subdir == "offline":
+        parser.error("with --test-feature-dir, also pass --offline-subdir (for example "
+                     "offline_q15). The default 'offline' would delete the existing results.")
 
     cfg = load_config_by_name(args.config)
     m = cfg["model"]
@@ -100,6 +116,14 @@ def main():
     # Same source as export_deploy_matrix_classic.py and run_deployment_test.py --
     # this identity is what makes an offline/online comparison meaningful.
     fold = load_resolved_fold(base_dir)
+    feature_meta = None
+    if args.test_feature_dir:
+        fold, feature_meta = remap_test_features(
+            fold, args.test_feature_dir,
+            require_metadata=not args.no_feature_metadata_check,
+            splits=tuple(args.feature_splits))
+        print(f"Test features from {args.test_feature_dir} "
+              f"(train and calibration keep the cache_path features)")
     test_rows = fold["test"].reset_index(drop=True)
     test_labels = (test_rows["label"].values == "anomaly").astype(int)
     clip_names = [Path(p).stem for p in test_rows["path"]]
@@ -244,6 +268,8 @@ def main():
             "selective": False,
             "recurrence": setup["recurrence"],
             "n_test_clips": len(test_rows),
+            "test_feature_dir": args.test_feature_dir,
+            "test_feature_recipe_fingerprint": (feature_meta or {}).get("recipe_fingerprint"),
             "default_threshold_method": DEFAULT_THRESHOLD_METHOD,
             "parity_check_against_deployed_c": {"ok": parity_ok, "detail": parity_detail},
             "auc": auc, "pauc": pauc,
@@ -257,7 +283,7 @@ def main():
               f"P={default_m['precision']:.3f} R={default_m['recall']:.3f} "
               f"A={default_m['accuracy']:.3f} F1={default_m['f1']:.3f}")
 
-    print("\nDone. Offline artifacts written under each setup's offline/ subfolder.")
+    print(f"\nDone. Offline artifacts written under each setup's {args.offline_subdir}/ subfolder.")
 
 
 if __name__ == "__main__":

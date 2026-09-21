@@ -7,6 +7,8 @@
     "selective": false,
     "recurrence": "qabar",
     "n_test_clips": 530,
+    "test_feature_dir": "cache_features_q15",
+    "test_feature_recipe_fingerprint": "aacf6b5b987ff7fba71b9a44f0eded309f36f2b01c902f6c0b502687d766ab5c",
     "default_threshold_method": "percentile_same_machine_99.0",
     "parity_check_against_deployed_c": {
         "ok": true,
@@ -16,19 +18,19 @@
     "pauc": 0.9960278053624627,
     "thresholds": {
         "percentile_same_machine_95.0": {
-            "threshold": 1.0937270660928962,
+            "threshold": 1.1210314294409909,
             "info": {
                 "percentile": 95.0
             },
             "metrics": {
-                "precision": 0.9359430604982206,
+                "precision": 0.9163763066202091,
                 "recall": 0.9924528301886792,
-                "accuracy": 0.9622641509433962,
-                "f1": 0.9633699633699634
+                "accuracy": 0.9509433962264151,
+                "f1": 0.9528985507246377
             }
         },
         "percentile_same_machine_99.0": {
-            "threshold": 1.1236095298234818,
+            "threshold": 1.1515584947104927,
             "info": {
                 "percentile": 99.0
             },
@@ -40,24 +42,42 @@
             }
         },
         "percentile_same_machine_99.5": {
-            "threshold": 1.129122926985425,
+            "threshold": 1.1643513925357076,
             "info": {
                 "percentile": 99.5
             },
             "metrics": {
-                "precision": 0.9924528301886792,
+                "precision": 0.9962121212121212,
                 "recall": 0.9924528301886792,
-                "accuracy": 0.9924528301886792,
-                "f1": 0.9924528301886792
+                "accuracy": 0.9943396226415094,
+                "f1": 0.994328922495274
             }
         },
         "evt_p95_equiv": {
-            "threshold": 1.0944887119730875,
+            "threshold": 1.120662712450969,
             "info": {
-                "u0": 1.0803760037015815,
-                "shape": -0.057689387487162846,
-                "scale": 0.02090669176209558,
+                "u0": 1.1049906682036066,
+                "shape": -0.05132167607060882,
+                "scale": 0.023166184275816175,
                 "n_exceedances": 108
+            },
+            "metrics": {
+                "precision": 0.9163763066202091,
+                "recall": 0.9924528301886792,
+                "accuracy": 0.9509433962264151,
+                "f1": 0.9528985507246377
+            }
+        },
+        "parametric_p95_equiv": {
+            "threshold": 1.124533684807114,
+            "info": {
+                "best_family": "weibull_min",
+                "aic_by_family": {
+                    "gamma": -2440.713585582724,
+                    "lognorm": -2405.764013761164,
+                    "weibull_min": -2685.7758905012206,
+                    "chi": -2472.838757572381
+                }
             },
             "metrics": {
                 "precision": 0.9392857142857143,
@@ -66,26 +86,8 @@
                 "f1": 0.9651376146788991
             }
         },
-        "parametric_p95_equiv": {
-            "threshold": 1.0972133665011876,
-            "info": {
-                "best_family": "weibull_min",
-                "aic_by_family": {
-                    "gamma": -2868.9009588647023,
-                    "lognorm": -2840.6064166230417,
-                    "weibull_min": -3087.5084307968473,
-                    "chi": -2895.1078371181425
-                }
-            },
-            "metrics": {
-                "precision": 0.9494584837545126,
-                "recall": 0.9924528301886792,
-                "accuracy": 0.969811320754717,
-                "f1": 0.9704797047970479
-            }
-        },
         "kde_p95_equiv": {
-            "threshold": 1.099723965695333,
+            "threshold": 1.1275368209404948,
             "info": {
                 "bandwidth_factor": 0.24712350348878998,
                 "n_calib": 1085
@@ -98,11 +100,11 @@
             }
         },
         "evt_p99_equiv": {
-            "threshold": 1.1253705713226263,
+            "threshold": 1.1552064731642364,
             "info": {
-                "u0": 1.0803760037015815,
-                "shape": -0.057689387487162846,
-                "scale": 0.02090669176209558,
+                "u0": 1.1049906682036066,
+                "shape": -0.05132167607060882,
+                "scale": 0.023166184275816175,
                 "n_exceedances": 108
             },
             "metrics": {
@@ -113,14 +115,14 @@
             }
         },
         "parametric_p99_equiv": {
-            "threshold": 1.1207070789389073,
+            "threshold": 1.1529874059616168,
             "info": {
                 "best_family": "weibull_min",
                 "aic_by_family": {
-                    "gamma": -2868.9009588647023,
-                    "lognorm": -2840.6064166230417,
-                    "weibull_min": -3087.5084307968473,
-                    "chi": -2895.1078371181425
+                    "gamma": -2440.713585582724,
+                    "lognorm": -2405.764013761164,
+                    "weibull_min": -2685.7758905012206,
+                    "chi": -2472.838757572381
                 }
             },
             "metrics": {
@@ -131,7 +133,7 @@
             }
         },
         "kde_p99_equiv": {
-            "threshold": 1.1300626975918577,
+            "threshold": 1.160527499737629,
             "info": {
                 "bandwidth_factor": 0.24712350348878998,
                 "n_calib": 1085
@@ -144,40 +146,40 @@
             }
         },
         "evt_p999_equiv": {
-            "threshold": 1.1648528217469991,
+            "threshold": 1.1999204505379562,
             "info": {
-                "u0": 1.0803760037015815,
-                "shape": -0.057689387487162846,
-                "scale": 0.02090669176209558,
+                "u0": 1.1049906682036066,
+                "shape": -0.05132167607060882,
+                "scale": 0.023166184275816175,
                 "n_exceedances": 108
             },
             "metrics": {
-                "precision": 0.9962121212121212,
+                "precision": 1.0,
                 "recall": 0.9924528301886792,
-                "accuracy": 0.9943396226415094,
-                "f1": 0.994328922495274
+                "accuracy": 0.9962264150943396,
+                "f1": 0.9962121212121212
             }
         },
         "parametric_p999_equiv": {
-            "threshold": 1.1433214007042705,
+            "threshold": 1.180477398360079,
             "info": {
                 "best_family": "weibull_min",
                 "aic_by_family": {
-                    "gamma": -2868.9009588647023,
-                    "lognorm": -2840.6064166230417,
-                    "weibull_min": -3087.5084307968473,
-                    "chi": -2895.1078371181425
+                    "gamma": -2440.713585582724,
+                    "lognorm": -2405.764013761164,
+                    "weibull_min": -2685.7758905012206,
+                    "chi": -2472.838757572381
                 }
             },
             "metrics": {
-                "precision": 0.9962121212121212,
+                "precision": 1.0,
                 "recall": 0.9924528301886792,
-                "accuracy": 0.9943396226415094,
-                "f1": 0.994328922495274
+                "accuracy": 0.9962264150943396,
+                "f1": 0.9962121212121212
             }
         },
         "kde_p999_equiv": {
-            "threshold": 1.1677842674696093,
+            "threshold": 1.2117598689841116,
             "info": {
                 "bandwidth_factor": 0.24712350348878998,
                 "n_calib": 1085
@@ -190,10 +192,10 @@
             }
         },
         "mad": {
-            "threshold": 1.1947730414494153,
+            "threshold": 1.2287798173134905,
             "info": {
-                "median": 1.022222874002743,
-                "mad": 0.03325288226936585
+                "median": 1.0324387934701755,
+                "mad": 0.03783772016637599
             },
             "metrics": {
                 "precision": 1.0,
@@ -203,11 +205,11 @@
             }
         },
         "iqr": {
-            "threshold": 1.2522482873259326,
+            "threshold": 1.3028027429309221,
             "info": {
-                "q1": 0.9864012882797629,
-                "q3": 1.0528630380413053,
-                "iqr": 0.0664617497615424
+                "q1": 0.9959041871305925,
+                "q3": 1.072628826080675,
+                "iqr": 0.07672463895008241
             },
             "metrics": {
                 "precision": 1.0,
