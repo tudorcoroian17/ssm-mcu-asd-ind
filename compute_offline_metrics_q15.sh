@@ -86,15 +86,15 @@ trap 'stop_heartbeat; echo -e "\n${RED}Stopped by the user.${NC}"; exit 130' INT
 
 # family  config  held-out case  model hash
 models=(
-    "selective f4cd557b7e3b.yaml 1 16662b29beb3"
-    "selective f4cd557b7e3b.yaml 2 0ac026912cdd"
-    "selective f4cd557b7e3b.yaml 3 2437e6cfa1ab"
-    "selective f4cd557b7e3b.yaml 4 733b93bfdb24"
-
-    "selective b39731b66741.yaml 1 086acf0275b8"
-    "selective b39731b66741.yaml 2 a501188e9de1"
-    "selective b39731b66741.yaml 3 314dd8026707"
-    "selective b39731b66741.yaml 4 d94988354ca3"
+#    "selective f4cd557b7e3b.yaml 1 16662b29beb3"
+#    "selective f4cd557b7e3b.yaml 2 0ac026912cdd"
+#    "selective f4cd557b7e3b.yaml 3 2437e6cfa1ab"
+#    "selective f4cd557b7e3b.yaml 4 733b93bfdb24"
+#
+#    "selective b39731b66741.yaml 1 086acf0275b8"
+#    "selective b39731b66741.yaml 2 a501188e9de1"
+#    "selective b39731b66741.yaml 3 314dd8026707"
+#    "selective b39731b66741.yaml 4 d94988354ca3"
 
     "classic f2578cb06991.yaml 1 238a49a973a3"
     "classic f2578cb06991.yaml 2 482eadc31485"

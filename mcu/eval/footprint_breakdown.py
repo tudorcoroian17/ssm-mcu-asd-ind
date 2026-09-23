@@ -603,7 +603,7 @@ def main() -> int:
     args = parser.parse_args()
 
     board_list = ['stm32-nucleo-h7s3l8', 'esp32', 'arduino-nano-rp2040-connect-mbed',
-                  'arduino-nano-rp2040-connect-pico']
+                  'arduino-nano-rp2040-connect-pico', 'arduino-nano-rp2040-connect-pico-q15']
     if args.board not in board_list:
         raise ValueError(f"Board not supported. Must be one of {board_list}")
 

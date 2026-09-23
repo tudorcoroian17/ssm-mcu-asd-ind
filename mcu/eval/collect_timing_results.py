@@ -10,14 +10,16 @@ from src.config import PROJECT_ROOT
 # float library, so results from the two builds must never mix.
 RP2040_MBED = 'arduino-nano-rp2040-connect-mbed'
 RP2040_PICO = 'arduino-nano-rp2040-connect-pico'
+RP2040_PICO_Q15 = 'arduino-nano-rp2040-connect-pico-q15'
 
-BOARD_LIST = ['stm32-nucleo-h7s3l8', 'esp32', RP2040_MBED, RP2040_PICO]
+BOARD_LIST = ['stm32-nucleo-h7s3l8', 'esp32', RP2040_MBED, RP2040_PICO, RP2040_PICO_Q15]
 
 BOARD_TIMING_UNITS = {
     'stm32-nucleo-h7s3l8': 'cycles',
     'esp32': 'cycles',
     RP2040_MBED: 'microseconds',
     RP2040_PICO: 'microseconds',
+    RP2040_PICO_Q15: 'microseconds',
 }
 
 RP2040_TIMING_COLUMNS = {
@@ -41,6 +43,10 @@ BOARD_TIMING_SOURCE = {
     },
     RP2040_PICO: {
         'path': _TEST_HARNESS / "output_rp2040_pico" / "cycle_sweep_rp2040_summary.csv",
+        'columns': RP2040_TIMING_COLUMNS,
+    },
+    RP2040_PICO_Q15: {
+        'path': _TEST_HARNESS / "output_rp2040_pico_q15" / "cycle_sweep_rp2040_summary.csv",
         'columns': RP2040_TIMING_COLUMNS,
     },
 }

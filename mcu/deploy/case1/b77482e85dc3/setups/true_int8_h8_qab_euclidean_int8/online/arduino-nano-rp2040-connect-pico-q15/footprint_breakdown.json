@@ -1,15 +1,15 @@
 {
-    "reported_total_bytes": 170444,
-    "captured_total_bytes": 173738,
+    "reported_total_bytes": 164632,
+    "captured_total_bytes": 167872,
     "by_category": {
-        "other": 27441,
-        "sketch_main": 6564,
+        "other": 27181,
+        "sketch_main": 6514,
         "audio_ingest": 116,
-        "feature_pipeline": 18014,
+        "feature_pipeline": 20326,
         "ssm_backbone": 1446,
         "ssm_head": 248,
-        "cmsis_dsp_rfft": 14474,
-        "arduino_core_mbed": 7564,
+        "cmsis_dsp_rfft": 6724,
+        "arduino_core_mbed": 7446,
         "toolchain_libs": 34619,
         "ssm_weights": 63252
     },
@@ -64,22 +64,22 @@
                 514
             ],
             [
-                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\rp2040\\hardware\\rp2040\\6.1.0/lib/rp2040/libpico.a(clocks.c.o)",
-                482
-            ],
-            [
                 "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\rp2040\\hardware\\rp2040\\6.1.0/lib/rp2040/libpico.a(float_aeabi_rp2040.S.o)",
                 466
             ],
             [
                 "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\rp2040\\hardware\\rp2040\\6.1.0/lib/rp2040/libpico.a(rp2040_usb_device_enumeration.c.o)",
                 424
+            ],
+            [
+                "C:\\Users\\MyPC\\AppData\\Local\\Arduino15\\packages\\rp2040\\hardware\\rp2040\\6.1.0/lib/rp2040/libpico.a(runtime_init.c.o)",
+                392
             ]
         ],
         "sketch_main": [
             [
                 "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\sketch\\arduino-nano-rp2040-connect-ssm-mamba-asd-q15.ino.cpp.o",
-                6564
+                6514
             ]
         ],
         "audio_ingest": [
@@ -91,7 +91,7 @@
         "feature_pipeline": [
             [
                 "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\sketch\\feature_pipeline.c.o",
-                18014
+                20326
             ]
         ],
         "ssm_backbone": [
@@ -112,40 +112,32 @@
         ],
         "cmsis_dsp_rfft": [
             [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_cfft_radix4_q15.c.o",
+                2856
+            ],
+            [
                 "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_common_tables.c.o",
-                9088
+                2496
             ],
             [
-                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_cfft_f32.c.o",
-                2566
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_cfft_q15.c.o",
+                628
             ],
             [
-                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_cfft_radix8_f32.c.o",
-                2020
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_rfft_q15.c.o",
+                546
             ],
             [
-                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_rfft_fast_f32.c.o",
-                562
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_shift_q15.c.o",
+                72
             ],
             [
                 "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_bitreversal2.c.o",
-                58
-            ],
-            [
-                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_cmplx_mag_squared_f32.c.o",
-                50
+                60
             ],
             [
                 "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_dot_prod_f32.c.o",
                 50
-            ],
-            [
-                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_rfft_fast_init_f32.c.o",
-                36
-            ],
-            [
-                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_cfft_init_f32.c.o",
-                28
             ],
             [
                 "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build\\libraries\\CMSIS_DSP_RFFT\\arm_const_structs.c.o",
@@ -167,7 +159,7 @@
             ],
             [
                 "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build/core\\core.a(main.cpp.o)",
-                737
+                619
             ],
             [
                 "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15\\build/core\\core.a(Print.cpp.o)",

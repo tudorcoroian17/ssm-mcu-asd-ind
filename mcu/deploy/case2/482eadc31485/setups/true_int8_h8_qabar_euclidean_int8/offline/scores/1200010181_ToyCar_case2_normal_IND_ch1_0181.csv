@@ -1,2 +1,2 @@
 clip_name,true_label,head,head_precision,score,decision,sumsq
-1200010181_ToyCar_case2_normal_IND_ch1_0181,normal,euclidean,int8,0.9168431058293496,0,959
+1200010181_ToyCar_case2_normal_IND_ch1_0181,normal,euclidean,int8,1.1343543684583106,0,1468

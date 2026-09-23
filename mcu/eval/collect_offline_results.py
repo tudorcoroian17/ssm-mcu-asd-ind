@@ -7,7 +7,7 @@ from src.config import PROJECT_ROOT
 
 MCU_DEPLOY_DIR = PROJECT_ROOT / 'mcu' / 'deploy'
 
-def get_metric_rows(model_dir):
+def get_metric_rows(model_dir, is_q15_feat = False, mode = 'dropin'):
     first_metrics_rows = []
     second_metrics_rows = []
     setups_dir = model_dir / 'setups'
@@ -15,7 +15,14 @@ def get_metric_rows(model_dir):
         if not setup.is_dir():
             continue
         diagnostics_file = setup / 'diagnostics.json'
-        metrics_file = setup / 'offline' / 'metrics.json'
+        offline_dir = 'offline'
+        if is_q15_feat:
+            offline_dir += '_q15'
+            if mode == 'dropin':
+                offline_dir += '_dropin'
+            else:
+                offline_dir += '_recal'
+        metrics_file = setup / offline_dir / 'metrics.json'
         with open(diagnostics_file) as f:
             diag = json.load(f)
         with open(metrics_file) as f:
@@ -67,10 +74,17 @@ def get_metric_rows(model_dir):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--held-out-case', type=int, required=True)
+    parser.add_argument('--quant-features', action='store_true')
+    parser.add_argument('--mode', type=str, default='dropin', help='q15 mode can be dropin or recal')
     args = parser.parse_args()
 
+    if args.quant_features:
+        out_subdir = 'q15_features'
+    else:
+        out_subdir = 'fp32_features'
+
     case_dir = MCU_DEPLOY_DIR / f'case{args.held_out_case}'
-    out_dir = PROJECT_ROOT / 'mcu' / 'eval' / 'offline'
+    out_dir = PROJECT_ROOT / 'mcu' / 'eval' / 'offline' / out_subdir
     columns_fm = ['config', 'held_out_case', 'model_hash', 'identifier', 'combo_number',
                   'bb_family', 'bb_h_width', 'bb_weights', 'bb_granularity', 'bb_activation_group', 'bb_recurrence',
                   'head', 'head_precision', 'auc', 'pauc']

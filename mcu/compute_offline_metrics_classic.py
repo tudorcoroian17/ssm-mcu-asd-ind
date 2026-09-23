@@ -197,7 +197,7 @@ def main():
         setup["_setup_dir"] = setup_dir  # threaded through to check_ref_parity
         print(f"\n[{combo_number:2d}/{TOTAL_COMBOS}] {ident}")
 
-        offline_dir = setup_dir / "offline"
+        offline_dir = setup_dir / args.offline_subdir
         if offline_dir.exists():
             # Idempotent per run: without this, re-running for a setup
             # already processed would silently APPEND a duplicate row to

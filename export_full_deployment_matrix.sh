@@ -15,37 +15,40 @@ NC='\033[0m' # No Color
 
 # List of commands to execute
 scripts=(
-    "python -m mcu.export_deploy_matrix --config f4cd557b7e3b.yaml --held-out-case 2 --model-hash 0ac026912cdd"
-    "python -m mcu.export_deploy_matrix --config f4cd557b7e3b.yaml --held-out-case 3 --model-hash 2437e6cfa1ab"
-    "python -m mcu.export_deploy_matrix --config f4cd557b7e3b.yaml --held-out-case 4 --model-hash 733b93bfdb24"
+    "python -m mcu.compute_offline_metrics_classic --config f2578cb06991.yaml --held-out-case 1 --model-hash 238a49a973a3"
+    "python -m mcu.compute_offline_metrics_classic --config 352f70960ed3.yaml --held-out-case 1 --model-hash b77482e85dc3"
 
-    "python -m mcu.compute_offline_metrics --config f4cd557b7e3b.yaml --held-out-case 2 --model-hash 0ac026912cdd"
-    "python -m mcu.compute_offline_metrics --config f4cd557b7e3b.yaml --held-out-case 3 --model-hash 2437e6cfa1ab"
-    "python -m mcu.compute_offline_metrics --config f4cd557b7e3b.yaml --held-out-case 4 --model-hash 733b93bfdb24"
-
-    "python -m mcu.export_deploy_matrix --config b39731b66741.yaml --held-out-case 2 --model-hash a501188e9de1"
-    "python -m mcu.export_deploy_matrix --config b39731b66741.yaml --held-out-case 3 --model-hash 314dd8026707"
-    "python -m mcu.export_deploy_matrix --config b39731b66741.yaml --held-out-case 4 --model-hash d94988354ca3"
-
-    "python -m mcu.compute_offline_metrics --config b39731b66741.yaml --held-out-case 2 --model-hash a501188e9de1"
-    "python -m mcu.compute_offline_metrics --config b39731b66741.yaml --held-out-case 3 --model-hash 314dd8026707"
-    "python -m mcu.compute_offline_metrics --config b39731b66741.yaml --held-out-case 4 --model-hash d94988354ca3"
-
-    "python -m mcu.export_deploy_matrix_classic --config f2578cb06991.yaml --held-out-case 2 --model-hash 482eadc31485"
-    "python -m mcu.export_deploy_matrix_classic --config f2578cb06991.yaml --held-out-case 3 --model-hash 5295aa5e5f6a"
-    "python -m mcu.export_deploy_matrix_classic --config f2578cb06991.yaml --held-out-case 4 --model-hash 8de65745cf2e"
-
-    "python -m mcu.compute_offline_metrics_classic --config f2578cb06991.yaml --held-out-case 2 --model-hash 482eadc31485"
-    "python -m mcu.compute_offline_metrics_classic --config f2578cb06991.yaml --held-out-case 3 --model-hash 5295aa5e5f6a"
-    "python -m mcu.compute_offline_metrics_classic --config f2578cb06991.yaml --held-out-case 4 --model-hash 8de65745cf2e"
-
-    "python -m mcu.export_deploy_matrix_classic --config 352f70960ed3.yaml --held-out-case 2 --model-hash d610f3c01dd7"
-    "python -m mcu.export_deploy_matrix_classic --config 352f70960ed3.yaml --held-out-case 3 --model-hash 03828168f4c2"
-    "python -m mcu.export_deploy_matrix_classic --config 352f70960ed3.yaml --held-out-case 4 --model-hash 3660d1d10006"
-
-    "python -m mcu.compute_offline_metrics_classic --config 352f70960ed3.yaml --held-out-case 2 --model-hash d610f3c01dd7"
-    "python -m mcu.compute_offline_metrics_classic --config 352f70960ed3.yaml --held-out-case 3 --model-hash 03828168f4c2"
-    "python -m mcu.compute_offline_metrics_classic --config 352f70960ed3.yaml --held-out-case 4 --model-hash 3660d1d10006"
+#    "python -m mcu.export_deploy_matrix --config f4cd557b7e3b.yaml --held-out-case 2 --model-hash 0ac026912cdd"
+#    "python -m mcu.export_deploy_matrix --config f4cd557b7e3b.yaml --held-out-case 3 --model-hash 2437e6cfa1ab"
+#    "python -m mcu.export_deploy_matrix --config f4cd557b7e3b.yaml --held-out-case 4 --model-hash 733b93bfdb24"
+#
+#    "python -m mcu.compute_offline_metrics --config f4cd557b7e3b.yaml --held-out-case 2 --model-hash 0ac026912cdd"
+#    "python -m mcu.compute_offline_metrics --config f4cd557b7e3b.yaml --held-out-case 3 --model-hash 2437e6cfa1ab"
+#    "python -m mcu.compute_offline_metrics --config f4cd557b7e3b.yaml --held-out-case 4 --model-hash 733b93bfdb24"
+#
+#    "python -m mcu.export_deploy_matrix --config b39731b66741.yaml --held-out-case 2 --model-hash a501188e9de1"
+#    "python -m mcu.export_deploy_matrix --config b39731b66741.yaml --held-out-case 3 --model-hash 314dd8026707"
+#    "python -m mcu.export_deploy_matrix --config b39731b66741.yaml --held-out-case 4 --model-hash d94988354ca3"
+#
+#    "python -m mcu.compute_offline_metrics --config b39731b66741.yaml --held-out-case 2 --model-hash a501188e9de1"
+#    "python -m mcu.compute_offline_metrics --config b39731b66741.yaml --held-out-case 3 --model-hash 314dd8026707"
+#    "python -m mcu.compute_offline_metrics --config b39731b66741.yaml --held-out-case 4 --model-hash d94988354ca3"
+#
+#    "python -m mcu.export_deploy_matrix_classic --config f2578cb06991.yaml --held-out-case 2 --model-hash 482eadc31485"
+#    "python -m mcu.export_deploy_matrix_classic --config f2578cb06991.yaml --held-out-case 3 --model-hash 5295aa5e5f6a"
+#    "python -m mcu.export_deploy_matrix_classic --config f2578cb06991.yaml --held-out-case 4 --model-hash 8de65745cf2e"
+#
+#    "python -m mcu.compute_offline_metrics_classic --config f2578cb06991.yaml --held-out-case 2 --model-hash 482eadc31485"
+#    "python -m mcu.compute_offline_metrics_classic --config f2578cb06991.yaml --held-out-case 3 --model-hash 5295aa5e5f6a"
+#    "python -m mcu.compute_offline_metrics_classic --config f2578cb06991.yaml --held-out-case 4 --model-hash 8de65745cf2e"
+#
+#    "python -m mcu.export_deploy_matrix_classic --config 352f70960ed3.yaml --held-out-case 2 --model-hash d610f3c01dd7"
+#    "python -m mcu.export_deploy_matrix_classic --config 352f70960ed3.yaml --held-out-case 3 --model-hash 03828168f4c2"
+#    "python -m mcu.export_deploy_matrix_classic --config 352f70960ed3.yaml --held-out-case 4 --model-hash 3660d1d10006"
+#
+#    "python -m mcu.compute_offline_metrics_classic --config 352f70960ed3.yaml --held-out-case 2 --model-hash d610f3c01dd7"
+#    "python -m mcu.compute_offline_metrics_classic --config 352f70960ed3.yaml --held-out-case 3 --model-hash 03828168f4c2"
+#    "python -m mcu.compute_offline_metrics_classic --config 352f70960ed3.yaml --held-out-case 4 --model-hash 3660d1d10006"
 )
 
 # Associative array to store output statuses

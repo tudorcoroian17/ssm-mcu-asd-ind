@@ -1,2 +1,2 @@
 clip_name,true_label,head,head_precision,score,decision,sumsq
-1400011309_ToyCar_case4_normal_IND_ch1_1309,normal,knn16,int8,0.8835342001225046,0,783
+1400011309_ToyCar_case4_normal_IND_ch1_1309,normal,knn16,int8,1.0158104092747033,0,1035
