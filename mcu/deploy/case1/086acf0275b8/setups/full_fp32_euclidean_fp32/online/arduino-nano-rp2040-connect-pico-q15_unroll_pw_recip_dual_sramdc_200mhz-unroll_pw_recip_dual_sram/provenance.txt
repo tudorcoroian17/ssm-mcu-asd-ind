@@ -1,0 +1,8 @@
+canonical: ssm_backbone_fullfp32_src
+weights_tagged: 23 (section .time_critical.ssm_weights)
+weights_in_flash: 2 (pattern [A-Za-z0-9_]*out_proj_w[[:space:]]*\[)
+generated: 2026-09-23T17:43:16Z
+a185775b854e8e14cd4e6842a7925ffd5a0d50d54ee6dae06daf37b97fd373f8  ssm_backbone.c
+3c5a61896305dac31d2f677bab759bb338fab34ebcf2aeaa39db6c6012a5fe58  ssm_backbone.h
+7134ba86e4c8f1efbcfb583b7044c71b41d8bb00c7a6fae365f1a7859333996f  ssm_weights.c
+bfc076c735ae51982b86571144e5ebd201880d43d6462422e55f2ba1ff56be23  ssm_weights.h

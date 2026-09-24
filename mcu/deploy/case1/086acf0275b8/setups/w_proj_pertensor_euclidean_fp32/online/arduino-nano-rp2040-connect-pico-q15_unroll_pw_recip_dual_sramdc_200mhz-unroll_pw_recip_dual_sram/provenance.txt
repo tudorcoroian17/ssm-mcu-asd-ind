@@ -1,0 +1,8 @@
+canonical: ssm_backbone_quant_src
+weights_tagged: 38 (section .time_critical.ssm_weights)
+weights_in_flash: 0
+generated: 2026-09-23T17:43:16Z
+86133ee540ccefb7f135422ed5a402e60344d8192c5c63efe552d859366116b8  ssm_backbone.c
+cee3a6311d9ce8a26a1c78658fae731ba6648691bb342c9b59304e3e9cbfc17a  ssm_backbone.h
+881d3837aed5f10310a555ea6fac8c1004d75b54dc8327bfdb846bf9aa9a2011  ssm_weights.c
+02c87007984acc5fcc239811b598be9df64941774815c6b49fff071e6ba62079  ssm_weights.h

@@ -1,17 +1,17 @@
 {
-    "reported_total_bytes": 173344,
-    "captured_total_bytes": 178968,
+    "reported_total_bytes": 173072,
+    "captured_total_bytes": 178966,
     "by_category": {
         "other": 29585,
         "sketch_main": 6525,
         "audio_ingest": 116,
         "feature_pipeline": 20326,
+        "ssm_backbone": 2450,
         "ssm_head": 248,
         "cmsis_dsp_rfft": 6724,
         "arduino_core_mbed": 7689,
         "toolchain_libs": 34619,
-        "ssm_weights": 70684,
-        "ssm_backbone": 2452
+        "ssm_weights": 70684
     },
     "top_objects_by_category": {
         "other": [
@@ -92,6 +92,12 @@
             [
                 "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15-unroll-recip-dual-sram\\build\\sketch\\feature_pipeline.c.o",
                 20326
+            ]
+        ],
+        "ssm_backbone": [
+            [
+                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15-unroll-recip-dual-sram\\build\\sketch\\ssm_backbone.c.o",
+                2450
             ]
         ],
         "ssm_head": [
@@ -266,12 +272,6 @@
             [
                 "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15-unroll-recip-dual-sram\\build\\sketch\\ssm_weights.c.o",
                 70684
-            ]
-        ],
-        "ssm_backbone": [
-            [
-                "D:\\Tudor\\Master\\Disertatie\\ssm-mcu-asd-deploy\\.cycle-sweep-rp2040-q15-unroll-recip-dual-sram\\build\\sketch\\ssm_backbone.c.o",
-                2452
             ]
         ]
     }
